@@ -1,0 +1,12 @@
+Simulation
+{
+	Name		TestSim
+	Material	TestInputs/IN718.txt
+	Beam		TestInputs/Beam.txt
+	Path		TestInputs/Path.txt
+}
+Options
+{
+	Domain		TestInputs/Domain.txt
+	Settings	TestInputs/Settings.txt
+}

@@ -1,0 +1,11 @@
+Shape
+{
+	Width_X		10.0e-6
+	Width_Y		10.0e-6
+	Depth_Z		1.0e-6
+}
+Intensity
+{
+	Power		1200
+	Efficiency	1.0
+}
