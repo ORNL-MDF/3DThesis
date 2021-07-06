@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,32 +36,38 @@
 #include <vector>
 #include "DataStructs.h"
 #include "Point.h"
+
+using std::vector;
+using std::string;
+
 namespace Init {
 	// Read for Keywords
-	void	Keywords_Lv2(std::vector<std::string>&, std::vector<std::vector<std::string>>&, std::vector<std::vector<std::string>>&, std::string&);
-	void	Keywords_Lv2(std::vector<std::string>&, std::vector<std::vector<std::string>>&, std::vector<std::vector<double>>&, std::string&);
+	void	Keywords_Lv2(vector<string>&, vector<vector<string>>&, vector<vector<string>>&, string&);
+	void	Keywords_Lv2(vector<string>&, vector<vector<string>>&, vector<vector<double>>&, string&);
 	// Helps Set Values and Display Errors
-	void	SetValues(std::string&, std::string, std::string, std::string, int);
-	void	SetValues(int&,  double, int, std::string, int);
-	void	SetValues(double&, double, double, std::string, int);
+	void	SetValues(string&, string, string, string, int);
+	void	SetValues(int&,  double, int, string, int);
+	void	SetValues(double&, double, double, string, int);
 
 	// Gets file names from the input file
-	void	GetFileNames(Simdat&,std::string);
-	void	ReadSimParams(std::vector<path_seg>&, Simdat&);
+	void	GetFileNames(Simdat&,string);
+	void	ReadSimParams(vector<path_seg>&, Simdat&);
 	void	MakeDataDirectory(Simdat&);
 
 	// Reads in all necessary simulation parameters
 	void	FileRead_Material(Simdat&);
 	void	FileRead_Beam(Simdat&);
-	void	FileRead_Path(std::vector<path_seg>&, Simdat&);
+	void	FileRead_Path(vector<path_seg>&, Simdat&);
 
 	// Reads in fine tuned simulation parameters
-	void	FileRead_Domain(std::vector<path_seg>&, Simdat&);
+	void	FileRead_Domain(vector<path_seg>&, Simdat&);
 	void	FileRead_Settings(Simdat&);
 
 	// Reads in utility files (miscellaneous stuff for research)
+	void	FileRead_Points(Simdat&);
 	void	FileRead_ParBeams(Simdat&);
+	void	FileRead_InfBeams(Simdat&);
 
 	// Initializes the positions of all points
-	void	SetPoints(std::vector<Point>&, Simdat&);
+	void	SetPoints(Point * const ptv, Simdat&);
 }

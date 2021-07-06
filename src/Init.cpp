@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -53,7 +53,7 @@
 #include <sys/stat.h>
 #endif
 
-void	Init::Keywords_Lv2(std::vector<std::string>& mainWords, std::vector<std::vector<std::string>>& subWords, std::vector<std::vector<std::string>>& strings, std::string& input_file) {
+void	Init::Keywords_Lv2(vector<string>& mainWords, vector<vector<string>>& subWords, vector<vector<string>>& strings, string& input_file) {
 	
 	for (int i = 0; i < subWords.size(); i++) {
 		for (int j = 0; j < subWords[i].size(); j++) {
@@ -61,17 +61,17 @@ void	Init::Keywords_Lv2(std::vector<std::string>& mainWords, std::vector<std::ve
 		}
 	}
 	
-	std::string line;
+	string line;
 	std::ifstream readFile;
 	int num_read = 0;
 	readFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try {
 		readFile.open(input_file.c_str(), std::ios::in);
 		while (true) {
-			std::string tempWord = "";
-			std::string tempWord2 = "";
+			string tempWord = "";
+			string tempWord2 = "";
 			int mainWord = -1;
-			std::string subWord = "";
+			string subWord = "";
 			readFile >> tempWord; getline(readFile, line);
 			for (int i = 0; i < mainWords.size(); i++) {
 				if (tempWord == mainWords[i]) {
@@ -99,9 +99,16 @@ void	Init::Keywords_Lv2(std::vector<std::string>& mainWords, std::vector<std::ve
 			}
 		}
 	}
-	catch (const std::ifstream::failure&) { if (num_read) { std::cout << "Finished Reading " << input_file << "\n"; readFile.close();} }
+	catch (const std::ifstream::failure&) { 
+		if (num_read) { std::cout << "Finished Reading " << input_file << std::endl; readFile.close();}
+		else { std::cout << "Failed to Open " << input_file << std::endl; readFile.close();}
+	}
+	catch (const std::exception& e) {
+		if (num_read) { std::cout << "Finished Reading " << input_file << std::endl; readFile.close(); }
+		else { std::cout << "Caught an Exception in " << input_file << "\t" << e.what() << std::endl; readFile.close(); }
+	}
 }
-void	Init::Keywords_Lv2(std::vector<std::string>& mainWords, std::vector<std::vector<std::string>>& subWords, std::vector<std::vector<double>>& values, std::string& input_file) {
+void	Init::Keywords_Lv2(vector<string>& mainWords, vector<vector<string>>& subWords, vector<vector<double>>& values, string& input_file) {
 
 	for (int i = 0; i < subWords.size(); i++) {
 		for (int j = 0; j < subWords[i].size(); j++) {
@@ -109,17 +116,17 @@ void	Init::Keywords_Lv2(std::vector<std::string>& mainWords, std::vector<std::ve
 		}
 	}
 
-	std::string line;
+	string line;
 	std::ifstream readFile;
 	int num_read = 0;
 	readFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try {
 		readFile.open(input_file.c_str(), std::ios::in);
 		while (true) {
-			std::string tempWord = "";
+			string tempWord = "";
 			double tempValue = DBL_MAX;
 			int mainWord = -1;
-			std::string subWord = "";
+			string subWord = "";
 			readFile >> tempWord; getline(readFile, line);
 			for (int i = 0; i < mainWords.size(); i++) {
 				if (tempWord == mainWords[i]) {
@@ -147,46 +154,52 @@ void	Init::Keywords_Lv2(std::vector<std::string>& mainWords, std::vector<std::ve
 			}
 		}
 	}
-	catch (const std::ifstream::failure&) { if (num_read){ std::cout << "Finished Reading "<< input_file << "\n"; readFile.close();}}
-	
+	catch (const std::ifstream::failure&) { 
+		if (num_read){ std::cout << "Finished Reading "<< input_file << std::endl; readFile.close();}
+		else { std::cout << "Failed to Open " << input_file << std::endl; readFile.close(); }
+	}	
+	catch (const std::exception& e) { 
+		if (num_read) { std::cout << "Finished Reading " << input_file << std::endl; readFile.close(); }
+		else { std::cout << "Caught an Exception in " << input_file << "\t" << e.what() << std::endl; readFile.close(); }
+	}
 }
 
-void	Init::SetValues(std::string& simValue, std::string input, std::string simDefault, std::string name, int err) {
+void	Init::SetValues(string& simValue, string input, string simDefault, string name, int err) {
 	if (input == "") {
 		simValue = simDefault; 
 		if (err==1) {
-			std::cout << "Error: " << name << " not read. Setting to default value " << simDefault << "\n";
+			std::cout << "Error: " << name << " not read. Setting to default value " << simDefault << std::endl;
 		} 
 		if (err == 2) {
-			std::cout << "Fatal Error: " << name << " not read\n"; 
+			std::cout << "Fatal Error: " << name << " not read" << std::endl;
 			//system("pause");
 		}
 	}
 	else { simValue = input; }
 	return;
 }
-void	Init::SetValues(int& simValue, double input, int simDefault, std::string name, int err) {
+void	Init::SetValues(int& simValue, double input, int simDefault, string name, int err) {
 	if (input == DBL_MAX) {
 		simValue = simDefault;
 		if (err == 1) {
-			std::cout << "Error: " << name << " not read. Setting to default value " << simDefault << "\n";
+			std::cout << "Error: " << name << " not read. Setting to default value " << simDefault << std::endl;
 		}
 		if (err == 2) {
-			std::cout << "Fatal Error: " << name << " not read\n";
+			std::cout << "Fatal Error: " << name << " not read" << std::endl;
 			//system("pause");
 		}
 	}
 	else { simValue = int(input); }
 	return;
 }
-void	Init::SetValues(double& simValue, double input, double simDefault, std::string name, int err) {
+void	Init::SetValues(double& simValue, double input, double simDefault, string name, int err) {
 	if (input == DBL_MAX) {
 		simValue = simDefault;
 		if (err == 1) {
-			std::cout << "Error: " << name << " not read. Setting to default value " << simDefault << "\n";
+			std::cout << "Error: " << name << " not read. Setting to default value " << simDefault << std::endl;
 		}
 		if (err == 2) {
-			std::cout << "Fatal Error: " << name << " not read\n";
+			std::cout << "Fatal Error: " << name << " not read" << std::endl;
 			//system("pause");
 		}
 	}
@@ -194,13 +207,13 @@ void	Init::SetValues(double& simValue, double input, double simDefault, std::str
 	return;
 }
 
-void	Init::GetFileNames(Simdat& sim, std::string input_file) {
-	std::vector<std::string> mainWords;
+void	Init::GetFileNames(Simdat& sim, string input_file) {
+	vector<string> mainWords;
 	mainWords.push_back("Simulation");
 	mainWords.push_back("Options");
 	mainWords.push_back("Utility");
 	
-	std::vector<std::vector<std::string>> subWords(mainWords.size());
+	vector<vector<string>> subWords(mainWords.size());
 	subWords[0].push_back("Name");
 	subWords[0].push_back("Material");
 	subWords[0].push_back("Beam");
@@ -209,9 +222,11 @@ void	Init::GetFileNames(Simdat& sim, std::string input_file) {
 	subWords[1].push_back("Domain");
 	subWords[1].push_back("Settings");
 
+	subWords[2].push_back("Points");
 	subWords[2].push_back("ParBeams");
+	subWords[2].push_back("InfBeams");
 
-	std::vector<std::vector<std::string>> files(mainWords.size());
+	vector<vector<string>> files(mainWords.size());
 
 	Init::Keywords_Lv2(mainWords, subWords, files, input_file);
 
@@ -223,11 +238,13 @@ void	Init::GetFileNames(Simdat& sim, std::string input_file) {
 	Init::SetValues(sim.file.domain, files[1][0], "", "Domain File", 0);
 	Init::SetValues(sim.file.settings, files[1][1], "", "Settings File", 0);
 
-	Init::SetValues(sim.file.parBeams, files[2][0], "", "ParBeams File", 0);
+	Init::SetValues(sim.file.points, files[2][0], "", "Points File", 0);
+	Init::SetValues(sim.file.parBeams, files[2][1], "", "ParBeams File", 0);
+	Init::SetValues(sim.file.infBeams, files[2][2], "", "InfBeams File", 0);
 
 	return;
 }
-void	Init::ReadSimParams(std::vector<path_seg>& segv, Simdat& sim) {
+void	Init::ReadSimParams(vector<path_seg>& segv, Simdat& sim) {
 
 	Init::MakeDataDirectory(sim);
 
@@ -239,12 +256,14 @@ void	Init::ReadSimParams(std::vector<path_seg>& segv, Simdat& sim) {
 	Init::FileRead_Settings(sim);
 
 	Init::FileRead_ParBeams(sim);
+	Init::FileRead_Points(sim);
+	Init::FileRead_InfBeams(sim);
 
 	return;
 }
 void	Init::MakeDataDirectory(Simdat& sim) {
 	//Make Data directory if it does not already exist
-	std::string strPath = "Data";
+	string strPath = "Data";
 #if defined(_WIN32)
 	_mkdir(strPath.c_str());
 #else 
@@ -252,7 +271,7 @@ void	Init::MakeDataDirectory(Simdat& sim) {
 #endif
 
 //Make SubData directory if it does not already exist
-	std::string strSubPath = "Data/" + sim.file.name;
+	string strSubPath = "Data/" + sim.file.name;
 #if defined(_WIN32)
 	_mkdir(strSubPath.c_str());
 #else 
@@ -261,11 +280,11 @@ void	Init::MakeDataDirectory(Simdat& sim) {
 }
 
 void	Init::FileRead_Material(Simdat& sim) {
-	std::vector<std::string> mainWords;
+	vector<string> mainWords;
 	mainWords.push_back("Constants");
 	mainWords.push_back("CET");
 
-	std::vector<std::vector<std::string>> subWords(mainWords.size());
+	vector<vector<string>> subWords(mainWords.size());
 	subWords[0].push_back("T_0");
 	subWords[0].push_back("T_L");
 	subWords[0].push_back("k");
@@ -276,7 +295,7 @@ void	Init::FileRead_Material(Simdat& sim) {
 	subWords[1].push_back("n");
 	subWords[1].push_back("a");
 
-	std::vector<std::vector<double>> values(mainWords.size());
+	vector<vector<double>> values(mainWords.size());
 
 	Init::Keywords_Lv2(mainWords, subWords, values, sim.file.mat);
 
@@ -299,11 +318,11 @@ void	Init::FileRead_Material(Simdat& sim) {
 	return;
 }
 void	Init::FileRead_Beam(Simdat& sim) {
-	std::vector<std::string> mainWords;
+	vector<string> mainWords;
 	mainWords.push_back("Shape");
 	mainWords.push_back("Intensity");
 
-	std::vector<std::vector<std::string>> subWords(mainWords.size());
+	vector<vector<string>> subWords(mainWords.size());
 	subWords[0].push_back("Width_X");
 	subWords[0].push_back("Width_Y");
 	subWords[0].push_back("Depth_Z");
@@ -311,7 +330,7 @@ void	Init::FileRead_Beam(Simdat& sim) {
 	subWords[1].push_back("Power");
 	subWords[1].push_back("Efficiency");
 
-	std::vector<std::vector<double>> values(mainWords.size());
+	vector<vector<double>> values(mainWords.size());
 
 	Init::Keywords_Lv2(mainWords, subWords, values, sim.file.beam);
 
@@ -327,7 +346,7 @@ void	Init::FileRead_Beam(Simdat& sim) {
 
 	return;
 }
-void	Init::FileRead_Path(std::vector<path_seg>& segv, Simdat& sim) {
+void	Init::FileRead_Path(vector<path_seg>& segv, Simdat& sim) {
 	sim.param.xmin = DBL_MAX;
 	sim.param.xmax = DBL_MIN;
 	sim.param.ymin = DBL_MAX;
@@ -340,7 +359,7 @@ void	Init::FileRead_Path(std::vector<path_seg>& segv, Simdat& sim) {
 
 	std::ifstream pathfile;
 	pathfile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	std::string line;
+	string line;
 
 	try {
 		pathfile.open(sim.file.path.c_str(), std::ios::in);
@@ -380,7 +399,15 @@ void	Init::FileRead_Path(std::vector<path_seg>& segv, Simdat& sim) {
 			}
 		}
 	}
-	catch (const std::ifstream::failure&) {if (segv.size()) { std::cout << "Finished Reading " << sim.file.path << "\n"; pathfile.close(); }}
+	catch (const std::ifstream::failure&) {
+		if (segv.size()) { std::cout << "Finished Reading " << sim.file.path << std::endl; pathfile.close(); }
+		else { std::cout << "Failed to Open " << sim.file.path << std::endl; pathfile.close(); }
+	}
+	catch (const std::exception& e) {
+		if (segv.size()) { std::cout << "Finished Reading " << sim.file.path << std::endl; pathfile.close(); }
+		else { std::cout << "Caught an Exception in " << sim.file.path << "\t" << e.what() << std::endl; }
+	}
+
 	sim.util.np = segv.size();
 
 	//Calculate path times
@@ -400,20 +427,19 @@ void	Init::FileRead_Path(std::vector<path_seg>& segv, Simdat& sim) {
 		}
 	}
 
-
 	sim.util.scanEndTime = segv[segv.size() - 1].seg_time;
 
 	return;
 }
 
-void	Init::FileRead_Domain(std::vector<path_seg>& segv, Simdat& sim) {
-	std::vector<std::string> mainWords;
+void	Init::FileRead_Domain(vector<path_seg>& segv, Simdat& sim) {
+	vector<string> mainWords;
 	mainWords.push_back("X");
 	mainWords.push_back("Y");
 	mainWords.push_back("Z");
 	mainWords.push_back("BoundaryConditions");
 
-	std::vector<std::vector<std::string>> subWords(mainWords.size());
+	vector<vector<string>> subWords(mainWords.size());
 	subWords[0].push_back("Min");
 	subWords[0].push_back("Max");
 	subWords[0].push_back("Num");
@@ -434,7 +460,7 @@ void	Init::FileRead_Domain(std::vector<path_seg>& segv, Simdat& sim) {
 	subWords[3].push_back("Y_min");
 	subWords[3].push_back("Y_max");
 
-	std::vector<std::vector<double>> values(mainWords.size());
+	vector<vector<double>> values(mainWords.size());
 
 	Init::Keywords_Lv2(mainWords, subWords, values, sim.file.domain);
 
@@ -459,36 +485,36 @@ void	Init::FileRead_Domain(std::vector<path_seg>& segv, Simdat& sim) {
 	Init::SetValues(sim.param.BC_ymax, values[3][3], DBL_MAX, "BC Y max", 0);
 
 	if (sim.param.xnum == INT_MAX) {
-		sim.param.xnum = 1 + int((sim.param.xmax - sim.param.xmin) / sim.param.xres);
+		sim.param.xnum = 1 + int(0.5 + (sim.param.xmax - sim.param.xmin) / sim.param.xres);
 		sim.param.xmax = sim.param.xmin + (sim.param.xnum - 1) * sim.param.xres;
 	}
 	else if (sim.param.xnum != 1) {
 		sim.param.xres = (sim.param.xmax - sim.param.xmin) / (sim.param.xnum - 1);
 	}
 	else {
-		sim.param.xres == DBL_MAX;
+		sim.param.xres = DBL_MAX;
 	}
 
 	if (sim.param.ynum == INT_MAX) {
-		sim.param.ynum = 1 + int((sim.param.ymax - sim.param.ymin) / sim.param.yres);
+		sim.param.ynum = 1 + int(0.5 + (sim.param.ymax - sim.param.ymin) / sim.param.yres);
 		sim.param.ymax = sim.param.ymin + (sim.param.ynum - 1) * sim.param.yres;
 	}
 	else if (sim.param.ynum != 1) {
 		sim.param.yres = (sim.param.ymax - sim.param.ymin) / (sim.param.ynum - 1);
 	}
 	else {
-		sim.param.yres == DBL_MAX;
+		sim.param.yres = DBL_MAX;
 	}
 
 	if (sim.param.znum == INT_MAX) {
-		sim.param.znum = 1 + int((sim.param.zmax - sim.param.zmin) / sim.param.zres);
+		sim.param.znum = 1 + int(0.5 + (sim.param.zmax - sim.param.zmin) / sim.param.zres);
 		sim.param.zmax = sim.param.zmin + (sim.param.znum - 1) * sim.param.zres;
 	}
 	else if (sim.param.ynum != 1) {
 		sim.param.zres = (sim.param.zmax - sim.param.zmin) / (sim.param.znum - 1);
 	}
 	else {
-		sim.param.zres == DBL_MAX;
+		sim.param.zres = DBL_MAX;
 	}
 
 	if (sim.param.BC_xmin != DBL_MAX || sim.param.BC_xmax != DBL_MAX || sim.param.BC_ymin != DBL_MAX || sim.param.BC_ymax != DBL_MAX) { sim.setting.use_BCs = 1; }
@@ -499,14 +525,14 @@ void	Init::FileRead_Domain(std::vector<path_seg>& segv, Simdat& sim) {
 	return;
 }
 void	Init::FileRead_Settings(Simdat& sim) {
-	std::vector<std::string> mainWords;
+	vector<string> mainWords;
 	mainWords.push_back("Simulation");
 	mainWords.push_back("Output");
 	mainWords.push_back("Temperature");
 	mainWords.push_back("Path");
 	mainWords.push_back("Neighbors");
 
-	std::vector<std::vector<std::string>> subWords(mainWords.size());
+	vector<vector<string>> subWords(mainWords.size());
 	subWords[0].push_back("TimeStep");
 	subWords[0].push_back("Mode");
 	subWords[0].push_back("MaxThreads");
@@ -514,6 +540,7 @@ void	Init::FileRead_Settings(Simdat& sim) {
 
 	subWords[1].push_back("Mode");
 	subWords[1].push_back("Interval");
+	subWords[1].push_back("T_hist");
 
 	subWords[2].push_back("Sol_Tol");
 	subWords[2].push_back("Sol_Iter");
@@ -525,7 +552,7 @@ void	Init::FileRead_Settings(Simdat& sim) {
 
 	subWords[4].push_back("Neighborhood");
 
-	std::vector<std::vector<double>> values(mainWords.size());
+	vector<vector<double>> values(mainWords.size());
 
 	Init::Keywords_Lv2(mainWords, subWords, values, sim.file.settings);
 
@@ -536,6 +563,7 @@ void	Init::FileRead_Settings(Simdat& sim) {
 
 	Init::SetValues(sim.setting.out_mode, values[1][0], 1, "Output Mode", 0);
 	Init::SetValues(sim.param.out_freq, values[1][1], INT_MAX, "Output Interval", 0);
+	Init::SetValues(sim.setting.T_hist, values[1][2], 0, "Store Temperature History of Points", 0);
 
 	Init::SetValues(sim.setting.dttest, values[2][0], 1e-3, "Solidification Tolerance", 0);
 	Init::SetValues(sim.setting.max_iter, values[2][1], 10, "Solidification Iterations", 0);
@@ -552,11 +580,47 @@ void	Init::FileRead_Settings(Simdat& sim) {
 	return;
 }
 
-void	Init::FileRead_ParBeams(Simdat& sim){
+void	Init::FileRead_Points(Simdat& sim) {
 
 	std::ifstream readFile;
 	readFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	std::string line;
+	string line;
+	int num_read = 0;
+	try {
+		readFile.open(sim.file.points.c_str(), std::ios::in);
+		coord temp;
+
+		//Set initial position as 0, 0, 0
+		temp.x = 0.0;
+		temp.y = 0.0;
+		temp.z = 0.0;
+
+		//Read in path information from file
+		while (getline(readFile, line))
+		{
+			readFile >> temp.x >> temp.y >> temp.z;
+			temp.x /= 1000.0; temp.y /= 1000.0; temp.z /= 1000.0;
+			sim.points.push_back(temp); 
+			num_read++;
+		}
+	}
+	catch (const std::ifstream::failure&) {
+		if (num_read) { std::cout << "Finished Reading " << sim.file.points << std::endl; readFile.close(); }
+	}
+	catch (const std::exception& e) {
+		if (num_read) { std::cout << "Finished Reading " << sim.file.points << std::endl; readFile.close(); }
+	}
+
+	if (num_read) { sim.setting.customPoints = 1; sim.param.pnum = num_read; }
+	else { sim.setting.customPoints = 0; }
+
+	return;
+}
+void	Init::FileRead_ParBeams(Simdat& sim) {
+
+	std::ifstream readFile;
+	readFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	string line;
 	int num_read = 0;
 	try {
 		readFile.open(sim.file.parBeams.c_str(), std::ios::in);
@@ -567,51 +631,163 @@ void	Init::FileRead_ParBeams(Simdat& sim){
 		temp.Xr = 0.0;
 		temp.Yr = 0.0;
 		temp.Pmod = 1.0;
-		sim.beams.push_back(temp);
+
+		sim.parBeams.push_back(temp);
 
 		//Read in path information from file
 		while (getline(readFile, line))
 		{
-
 			readFile >> temp.Xr >> temp.Yr >> temp.Pmod;
 
-			if (num_read){ sim.beams.push_back(temp); }
-			else { sim.beams[0] = temp; }
+			temp.Xr /= 1000.0; temp.Yr /= 1000.0;
+			if (num_read) { sim.parBeams.push_back(temp); }
+			else { sim.parBeams[0] = temp; }
 			num_read++;
 		}
 	}
-	catch (const std::ifstream::failure&) { if (num_read) { std::cout << "Finished Reading " << sim.file.parBeams << "\n"; readFile.close(); } }
+	catch (const std::ifstream::failure&) {
+		if (num_read) { std::cout << "Finished Reading " << sim.file.parBeams << std::endl; readFile.close(); }
+	}
+	catch (const std::exception& e) {
+		if (num_read) { std::cout << "Finished Reading " << sim.file.parBeams << std::endl; readFile.close(); }
+	}
 
 	if (num_read) { sim.setting.parBeams = 1; }
+	else { sim.setting.parBeams = 0; }
 
 	return;
 }
+void	Init::FileRead_InfBeams(Simdat& sim){
+	if (!sim.file.infBeams.size()) { sim.setting.infBeams = 0; return; }
+	// This Block is to construct all Paths //
+	std::string delim(".");
+	std::string test(sim.file.infBeams);
+	std::string basePath;
+	basePath = test.substr(0, test.find(delim));
+	test.erase(0, test.find(delim) + delim.length());
+	sim.setting.infBeams = std::stoi(test.substr(0, test.find(delim)));
+	std::vector<std::string> allPaths;
+	for (int i = 1; i <= sim.setting.infBeams; i++) {allPaths.push_back(basePath + "." + std::to_string(i) + ".txt");}
 
-void	Init::SetPoints(std::vector<Point>& ptv, Simdat& sim) {
-	ptv.resize(sim.param.pnum);
+	// This block is for reading all the Files //
+	double convert = 1e-3;
+	for (std::string path : allPaths) {
+		infBeam tempBeam;
+		std::ifstream readFile;
+		readFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		string line;
+		try {
+			readFile.open(path.c_str(), std::ios::in);
+			
+			getline(readFile, line); //Get rid of header
+			readFile >> tempBeam.q >> tempBeam.eff >> tempBeam.shapeMod;
+			tempBeam.q = tempBeam.q * tempBeam.eff * 2.0;
+			getline(readFile, line);
 
-	#pragma omp parallel num_threads(sim.setting.thnum)
-	{
-		double xp, yp, zp;
-		#pragma omp for schedule(static)
-		for (int i = 0; i < sim.param.xnum; i++) {
-			if (sim.param.xnum == 1) { xp = sim.param.xmax; }
-			else { xp = sim.param.xmin + ((float)i * ((sim.param.xmax - sim.param.xmin) / ((float)sim.param.xnum - 1))); }
-			for (int j = 0; j < sim.param.ynum; j++) {
-				if (sim.param.ynum == 1) { yp = sim.param.ymax; }
-				else { yp = sim.param.ymin + ((float)j * ((sim.param.ymax - sim.param.ymin) / ((float)sim.param.ynum - 1))); }
-				for (int k = 0; k < sim.param.znum; k++) {
-					if (sim.param.znum == 1) { zp = sim.param.zmax; }
-					else { zp = sim.param.zmin + ((float)k * ((sim.param.zmax - sim.param.zmin) / ((float)sim.param.znum - 1))); }
-					int p = Util::ijk_to_p(i, j, k, sim);
-					ptv[p].set_i(i);
-					ptv[p].set_j(j);
-					ptv[p].set_k(k);
-					ptv[p].set_xloc(xp);
-					ptv[p].set_yloc(yp);
-					ptv[p].set_zloc(zp);
-					ptv[p].Initialize();
-					p++;
+			path_shape_seg tempSeg;
+			tempSeg.smode = 1;
+			tempSeg.sx = 0.0;
+			tempSeg.sy = 0.0;
+			tempSeg.sz = 0.0;
+			tempSeg.sqmod = 0.0;
+			tempSeg.sparam = 0.0;
+			tempBeam.ssegv.push_back(tempSeg);
+
+			//Read in path information from file
+			while (getline(readFile, line))
+			{
+				tempSeg.smode = 1;
+				tempSeg.sx = 0.0;
+				tempSeg.sy = 0.0;
+				tempSeg.sz = 0.0;
+				tempSeg.sqmod = 0.0;
+				tempSeg.sparam = 0.0;
+
+				readFile >> tempSeg.smode >> tempSeg.sx >> tempSeg.sy >> tempSeg.sz >> tempSeg.sqmod >> tempSeg.sparam;
+				if (tempBeam.shapeMod) { readFile >> tempSeg.ax >> tempSeg.ay >> tempSeg.az; }
+				tempSeg.sx *= convert; tempSeg.sy *= convert; tempSeg.sz *= convert;
+				tempBeam.ssegv.push_back(tempSeg);
+			}
+		}
+		catch (const std::ifstream::failure&) {std::cout << "Finished Reading " << path << std::endl; readFile.close(); }
+		catch (const std::exception& e) {std::cout << "Finished Reading " << path << std::endl; readFile.close(); }
+
+		//Calculate path times
+		double dt_seg, dist, dx, dy, dz; 
+		double min_axy = 1; double min_a = 1;
+		tempBeam.ssegv[0].seg_time = 0;
+		for (int p = 1; p < tempBeam.ssegv.size(); p++) {
+			if (tempBeam.ssegv[p].smode) {	//For spot mode
+				tempBeam.ssegv[p].seg_time = tempBeam.ssegv[p - 1].seg_time + tempBeam.ssegv[p].sparam;
+			}
+			else {						//For line mode			
+				dx = tempBeam.ssegv[p].sx - tempBeam.ssegv[p - 1].sx;
+				dy = tempBeam.ssegv[p].sy - tempBeam.ssegv[p - 1].sy;
+				dz = tempBeam.ssegv[p].sz - tempBeam.ssegv[p - 1].sz;
+				dist = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+				dt_seg = dist / tempBeam.ssegv[p].sparam;
+				tempBeam.ssegv[p].seg_time = tempBeam.ssegv[p - 1].seg_time + dt_seg;
+			}
+
+			if (tempBeam.ssegv[p].ax < min_axy) { min_axy = tempBeam.ssegv[p].ax; }
+			if (tempBeam.ssegv[p].ay < min_axy) { min_axy = tempBeam.ssegv[p].ay; }
+
+			if (tempBeam.ssegv[p].ax < min_a) { min_a = tempBeam.ssegv[p].ax; }
+			if (tempBeam.ssegv[p].ay < min_a) { min_a = tempBeam.ssegv[p].ay; }
+			if (tempBeam.ssegv[p].az < min_a) { min_a = tempBeam.ssegv[p].az; }
+		}
+		tempBeam.scanEndTime = tempBeam.ssegv[tempBeam.ssegv.size() - 1].seg_time;
+		if (tempBeam.shapeMod) {
+			tempBeam.min_axy = min_axy;
+			tempBeam.min_a = min_a;
+			tempBeam.nond_dt = min_axy * min_axy / sim.mat.a;
+		}
+		else {
+			tempBeam.min_axy = sim.beam.ax;
+			tempBeam.min_a = sim.beam.az;
+			tempBeam.nond_dt = sim.beam.ax * sim.beam.ax / sim.mat.a;
+		}
+		
+		sim.infBeams.push_back(tempBeam);
+	}
+}
+
+void	Init::SetPoints(Point * const ptv, Simdat& sim) {
+	if (sim.setting.customPoints) { 
+		for (int p = 0; p < sim.param.pnum; p++) {
+			ptv[p].set_i(p);
+			ptv[p].set_j(0);
+			ptv[p].set_k(0);
+			ptv[p].set_xloc(sim.points[p].x);
+			ptv[p].set_yloc(sim.points[p].y);
+			ptv[p].set_zloc(sim.points[p].z);
+			ptv[p].Initialize(sim);
+		}
+	}
+	else {
+		#pragma omp parallel num_threads(sim.setting.thnum)
+		{
+			double xp, yp, zp;
+			#pragma omp for schedule(static)
+			for (int i = 0; i < sim.param.xnum; i++) {
+				if (sim.param.xnum == 1) { xp = sim.param.xmax; }
+				else { xp = sim.param.xmin + ((float)i * ((sim.param.xmax - sim.param.xmin) / ((float)sim.param.xnum - 1))); }
+				for (int j = 0; j < sim.param.ynum; j++) {
+					if (sim.param.ynum == 1) { yp = sim.param.ymax; }
+					else { yp = sim.param.ymin + ((float)j * ((sim.param.ymax - sim.param.ymin) / ((float)sim.param.ynum - 1))); }
+					for (int k = 0; k < sim.param.znum; k++) {
+						if (sim.param.znum == 1) { zp = sim.param.zmax; }
+						else { zp = sim.param.zmin + ((float)k * ((sim.param.zmax - sim.param.zmin) / ((float)sim.param.znum - 1))); }
+						int p = Util::ijk_to_p(i, j, k, sim);
+						ptv[p].set_i(i);
+						ptv[p].set_j(j);
+						ptv[p].set_k(k);
+						ptv[p].set_xloc(xp);
+						ptv[p].set_yloc(yp);
+						ptv[p].set_zloc(zp);
+						ptv[p].Initialize(sim);
+						p++;
+					}
 				}
 			}
 		}

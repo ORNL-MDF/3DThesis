@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,12 +34,18 @@
 
 #pragma once
 #include <cmath>
+
+using std::vector;
+using std::string;
+
 class Point{
 private:
 	//Attributes
 	double	x, y, z;							//Point location
 	int		i, j, k;							//Point index
 	double	T, Tlast, G, V, Gtemp, Gmag;		//Tempearture, previous temperature, thermal gradient, interface velocity, temporary G, global G
+	vector<double> T_hist;
+	vector<int> T_hist_iter;
 	double	Gx, Gy, Gz, Gx_temp, Gy_temp, Gz_temp, theta;
 	double  laplace;
 	double	Gxu, Gyu, Gzu;					//Components of unit vector in direction of solidification
@@ -64,21 +70,29 @@ public:
 	Point();
 	~Point();
 
-	//////////////////////////////////////////////////////////
-	///////////// FUNCTIONS IN POINT.CPP FILE ////////////////
-	//////////////////////////////////////////////////////////
-	void	Initialize();																//Initialize values
-	double	Temp_Calc_Pre_Path(double, std::vector<int_seg>&, Simdat&, int, int);		//Calculate the temperature of a point at some time
-		double  Calc_T(double, std::vector<int_seg>&, Simdat&);						    //Sub_mode for Temp_Calc_Pre_Path
-		double  Calc_Solidification(double, std::vector<int_seg>&, Simdat&);
-		double  Calc_Secondary_Solidification(double, std::vector<int_seg>&, Simdat&);
-	double 	Calc_Time(double, std::vector<path_seg>&, Simdat&, double);					//Find when a point crosses a specific temperature (must be getting tracked...so mode 2 must be >sim.t_liq
-	void	CalcGo_2(double, std::vector<path_seg>&, Simdat&);							//Find when a point solidifies and calculate the solidification conditions of the point
-	void	find_t_last_liq(double, std::vector<int_seg>&, Simdat&);					//Find the last time a point was liquid
-	double	find_t_last_heat(double, std::vector<path_seg>&, Simdat&);					//Find the last time a point was heating up
-	//////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////
-
+#pragma region Point.cpp Functions
+	void	Initialize(Simdat&);																//Initialize values
+	double	Temp_Calc_Pre_Path(double, vector<int_seg>&, Simdat&, int, int);		//Calculate the temperature of a point at some time
+		double  Calc_T(double, vector<int_seg>&, Simdat&);						    //Calculating just the temperature
+		double  Calc_Solidification(double, vector<int_seg>&, Simdat&);				//When calculating G, V
+		double  Calc_Secondary_Solidification(double, vector<int_seg>&, Simdat&);	//When calculating H
+#pragma region InfBeamVerions
+	double	Temp_Calc_Pre_Path(double, vector<infBeam>& , Simdat&, int, int);
+		double  Calc_T(double, vector<infBeam>&, Simdat&);						   
+		double  Calc_Solidification(double, vector<infBeam>&, Simdat&);
+		double  Calc_Secondary_Solidification(double, vector<infBeam>&, Simdat&);
+#pragma endregion InfBeamVerions
+	void	Solidify(double, vector<path_seg>&, Simdat&);							//Find when a point solidifies and calculate the solidification conditions of the point
+	double 	Calc_Time(double, vector<path_seg>&, Simdat&, double);					//Find when a point crosses a specific temperature (point must be getting tracked...or it won't work)
+	void	Calc_Sol(vector<path_seg>&, Simdat&);														//Finely integrate and calculate stuff for the solidification
+	void	Calc_Sol_Dirs(Simdat& sim);										//Use Calc_Sol's outputs to calculate the G,V, etc. Normalize directions
+#pragma region InfBeamVerions
+	double 	Calc_Time(double, vector<infBeam>&, Simdat&, double);
+	void	Calc_Sol(vector<infBeam>&, Simdat&);					
+#pragma endregion InfBeamVerions
+	void	find_t_last_liq(double, vector<int_seg>&, Simdat&);				//Find the last time a point was liquid
+	double	find_t_last_heat(double, vector<path_seg>&, Simdat&);			//Find the last time a point was heating up
+#pragma endregion Point.cpp Functions
 
 	void	set_xloc(double xp) { x = xp; }	
 	void	set_yloc(double yp) { y = yp; }
@@ -92,7 +106,10 @@ public:
 	void	set_check_flag(){ check_flag = 1; }
 
 	void	set_T(double Ttemp) { T = Ttemp; }
-	void	set_Tlast() { Tlast = T; }
+	void	set_Tlast(int store_T_hist, int iter) { 
+		Tlast = T; 
+		if (store_T_hist) { T_hist.push_back(Tlast); T_hist_iter.push_back(iter); }
+	}
 	void	set_Tlast_val(double T) { Tlast = T; }
 	void	set_G(double Gin){ G = Gin; }
 	void	set_V(double Vin){ V = Vin; }
@@ -111,6 +128,8 @@ public:
 
 	double	get_T(){ return T; }
 	double	get_Tlast(){ return Tlast; }
+	vector<double> get_T_hist() { return T_hist; }
+	vector<int> get_T_hist_iter() { return T_hist_iter; }
 	double	get_G(){ return G; }
 	double	get_V(){ return V; }
 	double	get_Gmag(){ return Gmag; }

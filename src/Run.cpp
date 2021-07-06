@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -46,7 +46,8 @@
 #include "PINT.h"
 #include "Out.h"
 
-void Run::Simulate(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num) {
+void Run::Simulate(Point * const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num) {
+	
 	Util::EstimateEndTime(sim, segv);
 	if (sim.param.mode == 0) { 
 		Run::Mode_0(ptv, segv, sim, seg_num); 
@@ -62,19 +63,31 @@ void Run::Simulate(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat&
 		if (sim.param.use_PINT) { Run::Mode_3_PINT(ptv, segv, sim, seg_num); }
 		else { Run::Mode_3(ptv, segv, sim, seg_num); }
 	}
+	//else if (sim.param.mode == 4) {
+	//	// MATT CODE
+	//	sim.mat.T_liq = 1609;
+	//	sim.mat.T_sol = 1533;
+	//	Run::Mode_4(ptv, segv, sim, seg_num);
+
+	//	sim.mat.T_liq = sim.mat.T_sol;
+	//	for (int i = 0; i < sim.param.pnum; i++) {
+	//	ptv[i].init_T_calc_flag(); ptv[i].set_s_flag(0); ptv[i].init_check_flag();
+	//	ptv[i].set_T(sim.mat.Tinit); ptv[i].set_Tlast_val(sim.mat.Tinit);
+	//	}
+	//	Run::Mode_4(ptv, segv, sim, seg_num);
+	//}
 
 	// CUSTOM AI CODE
-	/*std::vector<Point> ptv_mode0 = ptv;
+	/*vector<Point> ptv_mode0 = ptv;
 	Run::Mode_0(ptv_mode0, segv, sim, seg_num);
 	Run::Mode_3(ptv, segv, sim, seg_num);*/
 
-	// MATT CODE
-	//Run::Mode_2(ptv, segv, sim, seg_num);
+	
 
 	return;
 }
 
-void Run::Mode_0(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num) {
+void Run::Mode_0(Point * const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num) {
 
 	int itert = seg_num.size(), liq_num = 0;
 	double t = sim.util.scanEndTime;
@@ -84,8 +97,8 @@ void Run::Mode_0(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 	itert = floor(t / sim.param.dt);*/
 
 	//Pre-calculate integration loop information
-	std::vector<std::vector<int_seg>> isegv_par;
-	std::vector<int_seg> isegv;
+	vector<vector<int_seg>> isegv_par;
+	vector<int_seg> isegv;
 
 	while (true) {
 		Calc::Integrate(isegv, isegv_par, segv, sim, seg_num, itert, t, 0, 1);
@@ -110,13 +123,13 @@ void Run::Mode_0(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 	return;
 }
 
-void Run::Mode_1(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num) {
+void Run::Mode_1(Point * const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num) {
 	int itert = 0, liq_num = 0;
 	double t = segv[0].seg_time;
 
 	//Integration information
-	std::vector<std::vector<int_seg>> isegv_par;
-	std::vector<int_seg> isegv;
+	vector<vector<int_seg>> isegv_par;
+	vector<int_seg> isegv;
 
 	#pragma omp parallel for num_threads(sim.setting.thnum) schedule(static)
 	for (int p = 0; p < sim.param.pnum; p++) { ptv[p].set_output_flag(1); }
@@ -125,12 +138,12 @@ void Run::Mode_1(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 		Calc::Integrate(isegv, isegv_par, segv, sim, seg_num, itert, t, 0, sim.setting.thnum);
 
 		#pragma omp parallel for num_threads(sim.setting.thnum) schedule(static)
-		for (int p = 0; p < sim.param.pnum; p++) { ptv[p].set_Tlast();}
+		for (int p = 0; p < sim.param.pnum; p++) { ptv[p].set_Tlast(sim.setting.T_hist,itert);}
 
 		#pragma omp parallel for num_threads(sim.setting.thnum) schedule(dynamic,1+sim.param.pnum/sim.setting.thnum/64)
 		for (int p = 0; p < sim.param.pnum; p++) {
 			if (ptv[p].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq){
-				if (ptv[p].get_Tlast() >= sim.mat.T_liq) {ptv[p].CalcGo_2(t, segv, sim);}
+				if (ptv[p].get_Tlast() >= sim.mat.T_liq) {ptv[p].Solidify(t, segv, sim);}
 			}
 			else {
 				#pragma omp atomic
@@ -158,22 +171,22 @@ void Run::Mode_1(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 	return;
 }
 
-void Run::Mode_2(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num) {
+void Run::Mode_2(Point * const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num) {
 	omp_set_nested(1);
 
 	//Sets locks so only 1 thread can access a master point at the same time
-	std::vector<omp_lock_t> lock(sim.param.pnum);
+	vector<omp_lock_t> lock(sim.param.pnum);
 	Util::SetLocks(lock, sim);
 
 	// Vector of Liquid Point numbers
-	std::vector<int> liq_pts;
+	vector<int> liq_pts;
 
 	// Vector of Points to Reset Each Timestep
-	std::vector<int> reset_pts;
+	vector<int> reset_pts;
 
 	//Integration information
-	std::vector<std::vector<int_seg>> isegv_par;
-	std::vector<int_seg> isegv;
+	vector<vector<int_seg>> isegv_par;
+	vector<int_seg> isegv;
 
 	int itert = 0, liq_num = 0;
 	double t = segv[0].seg_time;
@@ -187,25 +200,25 @@ void Run::Mode_2(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 		//Set T_calc_flag at all points to indicate that they have not yet been calculated
 		#pragma omp parallel for num_threads(sim.setting.thnum) schedule(static)
 		for (int r = 0; r < reset_pts.size(); r++) {
-			ptv[reset_pts[r]].set_Tlast();
+			ptv[reset_pts[r]].set_Tlast(sim.setting.T_hist, itert);
 			ptv[reset_pts[r]].init_T_calc_flag();
 			ptv[reset_pts[r]].set_s_flag(0);
 		}
 		reset_pts.clear();
 		
 		//See which points from previous time step have solidified and do appropriate calculations
-		std::vector<int> last_liq_pts = liq_pts;
+		vector<int> last_liq_pts = liq_pts;
 		reset_pts = liq_pts;
 		liq_pts.clear();
 
 		//Check liquid points to see if they have solidified
 		#pragma omp parallel num_threads(sim.setting.thnum)
 		{
-			std::vector<int> th_liq_pts;
-			std::vector<int> th_reset_pts;
+			vector<int> th_liq_pts;
+			vector<int> th_reset_pts;
 			#pragma omp for schedule(dynamic,1+last_liq_pts.size()/sim.setting.thnum/64)
 			for (int it = 0; it < last_liq_pts.size(); it++) {
-				if (ptv[last_liq_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) { ptv[last_liq_pts[it]].CalcGo_2(t, segv, sim); }
+				if (ptv[last_liq_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) { ptv[last_liq_pts[it]].Solidify(t, segv, sim); }
 				else {th_liq_pts.push_back(last_liq_pts[it]);}
 			}
 			#pragma omp critical
@@ -213,10 +226,10 @@ void Run::Mode_2(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 		}
 
 		//Start search from points that are known to be liquid
-		std::vector<int> test_pts = liq_pts;
+		vector<int> test_pts = liq_pts;
 
 		// Trace beam path between time steps and add relevant points to the test vector if:
-		std::vector<int> bm_tr_pts;
+		vector<int> bm_tr_pts;
 		if (itert && t < sim.util.scanEndTime + sim.param.dt) {Melt::beam_trace(bm_tr_pts, ptv, segv, sim, seg_num, itert, itert - 1);}
 		for (int it = 0; it < bm_tr_pts.size(); it++) {
 			reset_pts.push_back(bm_tr_pts[it]);
@@ -249,11 +262,11 @@ void Run::Mode_2(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 	return;
 }
 
-void Run::Mode_2_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& segv, Simdat& sim_master, std::vector<int>& seg_num) {
+void Run::Mode_2_PINT(Point * const ptv_master, vector<path_seg>& segv, Simdat& sim_master, vector<int>& seg_num) {
 	omp_set_nested(1);
 
 	//Sets locks so only 1 thread can access a master point at the same time (last is for thread specific locking)
-	std::vector<omp_lock_t> lock_master(sim_master.param.pnum);
+	vector<omp_lock_t> lock_master(sim_master.param.pnum);
 	Util::SetLocks(lock_master, sim_master);
 	int num_done = 0;
 	int itert_tot = 0;
@@ -261,22 +274,22 @@ void Run::Mode_2_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 	std::vector <int> th_run(sim_master.setting.thnum, 1);
 	int last_thread = sim_master.setting.thnum - 1;
 
-	#pragma omp parallel for num_threads(sim_master.setting.thnum) schedule(dynamic) shared(ptv_master,lock_master,num_done,th_run,last_thread)
+	#pragma omp parallel for num_threads(sim_master.setting.thnum) schedule(dynamic) shared(lock_master,num_done,th_run,last_thread) //shared(ptv_master,lock_master,num_done,th_run,last_thread)
 	for (int thread = 0; thread < sim_master.setting.thnum; thread++) {
 		Simdat sim = sim_master;
 		//Sets locks so only 1 thread can access a point at the same time (last is for thread specific locking)
-		std::vector<omp_lock_t> lock(sim.param.pnum+1);
+		vector<omp_lock_t> lock(sim.param.pnum+1);
 		Util::SetLocks(lock, sim);
 		//Vector of ints whose index corresponds to the ptv_master and it's value corresponds to the index of the same point in ptv
-		std::vector<int> god_pts(sim_master.param.pnum, -1);
+		vector<int> god_pts(sim_master.param.pnum, -1);
 		std::deque<Point> ptv;
 		// Vector of Liquid Point numbers
-		std::vector<int> liq_pts;
+		vector<int> liq_pts;
 		// Vector of Points to Reset Each Timestep
-		std::vector<int> reset_pts;
+		vector<int> reset_pts;
 		//Integration information
-		std::vector<std::vector<int_seg>> isegv_par;
-		std::vector<int_seg> isegv;
+		vector<vector<int_seg>> isegv_par;
+		vector<int_seg> isegv;
 		///////////////////////////////////////
 		int itert = 0, liq_num = 0, itert_thread=0, itert_end=0;
 		double t = segv[0].seg_time;
@@ -304,17 +317,17 @@ void Run::Mode_2_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 			reset_pts.clear();
 
 			//See which points from previous time step have solidified and do appropriate calculations
-			std::vector<int> last_liq_pts = liq_pts;
+			vector<int> last_liq_pts = liq_pts;
 			reset_pts = last_liq_pts;
 			liq_pts.clear();
 
 			#pragma omp parallel num_threads(1+num_free) if(num_free)
 			{
-				std::vector<int> th_liq_pts;
+				vector<int> th_liq_pts;
 				#pragma omp for schedule(dynamic, 1+last_liq_pts.size() / (1+num_free) / 64)
 				for (int it = 0; it < last_liq_pts.size(); it++) {
 					if (ptv[god_pts[last_liq_pts[it]]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) {
-						ptv[god_pts[last_liq_pts[it]]].CalcGo_2(t, segv, sim);
+						ptv[god_pts[last_liq_pts[it]]].Solidify(t, segv, sim);
 					}
 					else { th_liq_pts.push_back(last_liq_pts[it]); }
 				}
@@ -324,9 +337,9 @@ void Run::Mode_2_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 			}
 
 			//Start search from points that are known to be liquid
-			std::vector<int> test_pts = liq_pts;
+			vector<int> test_pts = liq_pts;
 
-			std::vector<int> bm_tr_pts;
+			vector<int> bm_tr_pts;
 			// Trace beam path between time steps and add relevant points to the test vector if:
 			if (itert && !itert_thread){ PINT::beam_trace(bm_tr_pts, god_pts, ptv, lock, segv, sim, seg_num, itert, 0); }
 			else if (itert && t < sim.util.scanEndTime + sim.param.dt) {PINT::beam_trace(bm_tr_pts, god_pts, ptv, lock, segv, sim, seg_num, itert, itert - 1);}
@@ -374,24 +387,24 @@ void Run::Mode_2_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 	return;
 }
 
-void Run::Mode_3(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num) {
+void Run::Mode_3(Point * const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num) {
 	omp_set_nested(1);
 
 	//Sets locks so only 1 thread can access a master point at the same time
-	std::vector<omp_lock_t> lock(sim.param.pnum);
+	vector<omp_lock_t> lock(sim.param.pnum);
 	Util::SetLocks(lock, sim);
 
 	// Vector of Liquid Point numbers
-	std::vector<int> liq_pts;
-	std::vector<int> depths(sim.param.xnum*sim.param.ynum, 0);
+	vector<int> liq_pts;
+	vector<int> depths(sim.param.xnum*sim.param.ynum, 0);
 
 	// Vector of Points to Reset Each Timestep
-	std::vector<int> reset_pts;
+	vector<int> reset_pts;
 
 	//Integration information
-	std::vector<std::vector<int_seg>> isegv_par;
-	std::vector<int_seg> isegv;
-	std::vector<int_seg> isegv_last;
+	vector<vector<int_seg>> isegv_par;
+	vector<int_seg> isegv;
+	vector<int_seg> isegv_last;
 
 	int itert = 0, liq_num = 0;
 	double t = segv[0].seg_time;
@@ -409,26 +422,26 @@ void Run::Mode_3(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 		//Set T_calc_flag at all points to indicate that they have not yet been calculated
 		#pragma omp parallel for num_threads(sim.setting.thnum) schedule(static)
 		for (int r = 0; r < reset_pts.size(); r++) {
-			ptv[reset_pts[r]].set_Tlast();
+			ptv[reset_pts[r]].set_Tlast(sim.setting.T_hist, itert);
 			ptv[reset_pts[r]].init_T_calc_flag();
 			ptv[reset_pts[r]].set_s_flag(0);
 		}
 		reset_pts.clear();
 
 		//See which points from previous time step have solidified and do appropriate calculations
-		std::vector<int> last_liq_pts = liq_pts;
+		vector<int> last_liq_pts = liq_pts;
 		reset_pts = liq_pts;
 		liq_pts.clear();
 
 		//Check liquid points to see if they have solidified
 		#pragma omp parallel num_threads(sim.setting.thnum)
 		{
-			std::vector<int> th_liq_pts;
-			std::vector<int> th_reset_pts;
+			vector<int> th_liq_pts;
+			vector<int> th_reset_pts;
 			#pragma omp for schedule(dynamic,1+last_liq_pts.size()/sim.setting.thnum/64)
 			for (int it = 0; it < last_liq_pts.size(); it++) {
 				if (ptv[last_liq_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) { 
-					ptv[last_liq_pts[it]].CalcGo_2(t, segv, sim);
+					ptv[last_liq_pts[it]].Solidify(t, segv, sim);
 					///////SOLIDIFY REST OF COLUMN/////////	
 					int i = ptv[last_liq_pts[it]].get_i();
 					int j = ptv[last_liq_pts[it]].get_j();
@@ -438,7 +451,7 @@ void Run::Mode_3(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 						int pnum = Util::ijk_to_p(i, j, sim.param.znum - 1 - d, sim);
 						ptv[pnum].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0);
 						if (d != depth) {ptv[pnum].Temp_Calc_Pre_Path(t-sim.param.dt, isegv_last, sim, -1, 0);}
-						ptv[pnum].CalcGo_2(t, segv, sim);
+						ptv[pnum].Solidify(t, segv, sim);
 						th_reset_pts.push_back(pnum);
 					}
 					depths[dnum] = 0;
@@ -453,10 +466,10 @@ void Run::Mode_3(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 		}
 
 		//Start search from points that are known to be liquid
-		std::vector<int> test_pts = last_liq_pts;
+		vector<int> test_pts = last_liq_pts;
 
 		// Trace beam path between time steps and add relevant points to the test vector
-		std::vector<int> bm_tr_pts;
+		vector<int> bm_tr_pts;
 		if (itert && t < sim.util.scanEndTime + sim.param.dt) { Melt::beam_trace(bm_tr_pts, ptv, segv, sim, seg_num, itert, itert - 1); }
 		for (int it = 0; it < bm_tr_pts.size(); it++) {
 			reset_pts.push_back(bm_tr_pts[it]);
@@ -484,6 +497,7 @@ void Run::Mode_3(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 			if (itert / sim.param.out_freq) {Out::Write_csv(ptv, sim, Util::ZeroPadNumber(itert), sim.setting.out_mode);}
 			break;
 		}
+
 		t += sim.param.dt;			//Increment time
 		itert++;					//Increment time step counter
 		isegv_last = isegv;
@@ -492,11 +506,11 @@ void Run::Mode_3(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& s
 	return;
 }
 
-void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& segv, Simdat& sim_master, std::vector<int>& seg_num) {
+void Run::Mode_3_PINT(Point * const ptv_master, vector<path_seg>& segv, Simdat& sim_master, vector<int>& seg_num) {
 	omp_set_nested(1);
 
 	//Sets locks so only 1 thread can access a master point at the same time (last is for thread specific locking)
-	std::vector<omp_lock_t> lock_master(sim_master.param.pnum);
+	vector<omp_lock_t> lock_master(sim_master.param.pnum);
 	Util::SetLocks(lock_master, sim_master);
 	int num_done = 0;
 	int itert_tot = 0;
@@ -504,24 +518,24 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 	std::vector <int> th_run(sim_master.setting.thnum, 1);
 	int last_thread = sim_master.setting.thnum - 1;
 
-	#pragma omp parallel for num_threads(sim_master.setting.thnum) schedule(dynamic) shared(ptv_master,lock_master,num_done,th_run,last_thread)
+	#pragma omp parallel for num_threads(sim_master.setting.thnum) schedule(dynamic) shared(lock_master,num_done,th_run,last_thread) //shared(ptv_master,lock_master,num_done,th_run,last_thread)
 	for (int thread = 0; thread < sim_master.setting.thnum; thread++) {
 		Simdat sim = sim_master;
 		//Sets locks so only 1 thread can access a point at the same time (last is for thread specific locking)
-		std::vector<omp_lock_t> lock(sim.param.pnum+1);
+		vector<omp_lock_t> lock(sim.param.pnum+1);
 		Util::SetLocks(lock, sim);
 		//Vector of ints whose index corresponds to the ptv_master and it's value corresponds to the index of the same point in ptv
-		std::vector<int> god_pts(sim_master.param.pnum, -1);
+		vector<int> god_pts(sim_master.param.pnum, -1);
 		std::deque<Point> ptv;
 		// Vector of Liquid Point numbers
-		std::vector<int> liq_pts;
-		std::vector<int> depths(sim.param.xnum*sim.param.ynum, 0);
+		vector<int> liq_pts;
+		vector<int> depths(sim.param.xnum*sim.param.ynum, 0);
 		// Vector of Points to Reset Each Timestep
-		std::vector<int> reset_pts;
+		vector<int> reset_pts;
 		//Integration information
-		std::vector<std::vector<int_seg>> isegv_par;
-		std::vector<int_seg> isegv;
-		std::vector<int_seg> isegv_last;
+		vector<vector<int_seg>> isegv_par;
+		vector<int_seg> isegv;
+		vector<int_seg> isegv_last;
 		///////////////////////////////////////
 		int itert = 0, liq_num = 0, itert_thread = 0, itert_end = 0;
 		double t = segv[0].seg_time;
@@ -542,26 +556,26 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 			//Set T_calc_flag at all points to indicate that they have not yet been calculated
 			#pragma omp parallel for num_threads(1+num_free) schedule(static) if(num_free)
 			for (int r = 0; r < reset_pts.size(); r++) {
-				ptv[god_pts[reset_pts[r]]].set_Tlast();
+				ptv[god_pts[reset_pts[r]]].set_Tlast(sim.setting.T_hist, itert);
 				ptv[god_pts[reset_pts[r]]].init_T_calc_flag();
 				ptv[god_pts[reset_pts[r]]].set_s_flag(0);
 			}
 			reset_pts.clear();
 
 			//See which points from previous time step have solidified and do appropriate calculations
-			std::vector<int> last_liq_pts = liq_pts;
+			vector<int> last_liq_pts = liq_pts;
 			reset_pts = liq_pts;
 			liq_pts.clear();
 
 			//Check liquid points to see if they have solidified
 			#pragma omp parallel num_threads(1+num_free) if(num_free)
 			{
-				std::vector<int> th_liq_pts;
-				std::vector<int> th_reset_pts;
+				vector<int> th_liq_pts;
+				vector<int> th_reset_pts;
 				#pragma omp for schedule(dynamic,1+ last_liq_pts.size() / (1+num_free) / 64)
 				for (int it = 0; it < last_liq_pts.size(); it++) {
 					if (ptv[god_pts[last_liq_pts[it]]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) {
-						ptv[god_pts[last_liq_pts[it]]].CalcGo_2(t, segv, sim);
+						ptv[god_pts[last_liq_pts[it]]].Solidify(t, segv, sim);
 						///////SOLIDIFY REST OF COLUMN/////////	
 						int i = ptv[god_pts[last_liq_pts[it]]].get_i();
 						int j = ptv[god_pts[last_liq_pts[it]]].get_j();
@@ -573,7 +587,7 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 							ptv[god_pts[pnum]].set_output_flag(1);
 							ptv[god_pts[pnum]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0);
 							if (d != depth) { ptv[god_pts[pnum]].Temp_Calc_Pre_Path(t - sim.param.dt, isegv_last, sim, -1, 0); }
-							ptv[god_pts[pnum]].CalcGo_2(t, segv, sim);
+							ptv[god_pts[pnum]].Solidify(t, segv, sim);
 							th_reset_pts.push_back(pnum);
 						}
 						depths[dnum] = 0;
@@ -589,10 +603,10 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 			}
 
 			//Start search from points that are known to be liquid
-			std::vector<int> test_pts = last_liq_pts;
+			vector<int> test_pts = last_liq_pts;
 
 			// Trace beam path between time steps and add relevant points to the test vector
-			std::vector<int> bm_tr_pts;
+			vector<int> bm_tr_pts;
 			if (itert && !itert_thread) { PINT::beam_trace(bm_tr_pts, god_pts, ptv,lock, segv, sim, seg_num, itert, 0); }
 			else if (itert && t < sim.util.scanEndTime + sim.param.dt) { PINT::beam_trace(bm_tr_pts, god_pts, ptv,lock, segv, sim, seg_num, itert, itert - 1); }
 			//if (itert && t < sim.util.scanEndTime + sim.param.dt) { Melt::beam_trace(bm_tr_pts, ptv, segv, sim, seg_num, itert, itert - 1); }
@@ -644,27 +658,25 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 	return;
 }
 
-
 //MATT CUSTOM
-//void Run::Mode_2(std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num) {
-//	sim.mat.T_liq = 1616;
-//	sim.mat.T_sol = 1446;
-//	
+//void Run::Mode_4(Point * const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num) {
 //	omp_set_nested(1);
 //
 //	//Sets locks so only 1 thread can access a master point at the same time
-//	std::vector<omp_lock_t> lock(sim.param.pnum);
+//	vector<omp_lock_t> lock(sim.param.pnum);
 //	Util::SetLocks(lock, sim);
 //
 //	// Vector of Liquid Point numbers
-//	std::vector<int> liq_pts;
+//	vector<int> liq_pts;
+//	vector<int> depths(sim.param.xnum*sim.param.ynum, 0);
 //
 //	// Vector of Points to Reset Each Timestep
-//	std::vector<int> reset_pts;
+//	vector<int> reset_pts;
 //
 //	//Integration information
-//	std::vector<std::vector<int_seg>> isegv_par;
-//	std::vector<int_seg> isegv;
+//	vector<vector<int_seg>> isegv_par;
+//	vector<int_seg> isegv;
+//	vector<int_seg> isegv_last;
 //
 //	int itert = 0, liq_num = 0;
 //	double t = segv[0].seg_time;
@@ -678,50 +690,70 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 //		//Set T_calc_flag at all points to indicate that they have not yet been calculated
 //		#pragma omp parallel for num_threads(sim.setting.thnum) schedule(static)
 //		for (int r = 0; r < reset_pts.size(); r++) {
-//			ptv[reset_pts[r]].set_Tlast();
+//			ptv[reset_pts[r]].set_Tlast(sim.setting.T_hist, itert);
 //			ptv[reset_pts[r]].init_T_calc_flag();
 //			ptv[reset_pts[r]].set_s_flag(0);
 //		}
 //		reset_pts.clear();
 //
 //		//See which points from previous time step have solidified and do appropriate calculations
-//		std::vector<int> last_liq_pts = liq_pts;
+//		vector<int> last_liq_pts = liq_pts;
 //		reset_pts = liq_pts;
 //		liq_pts.clear();
 //
 //		//Check liquid points to see if they have solidified
 //		#pragma omp parallel num_threads(sim.setting.thnum)
 //		{
-//			std::vector<int> th_liq_pts;
-//			std::vector<int> th_reset_pts;
-//			#pragma omp for schedule(dynamic,last_liq_pts.size()/sim.setting.thnum/64)
+//			vector<int> th_liq_pts;
+//			vector<int> th_reset_pts;
+//			#pragma omp for schedule(dynamic,1+last_liq_pts.size()/sim.setting.thnum/64)
 //			for (int it = 0; it < last_liq_pts.size(); it++) {
-//				if (ptv[last_liq_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq && ptv[last_liq_pts[it]].get_Tlast()>=sim.mat.T_liq ) { 
-//					ptv[last_liq_pts[it]].set_t_last_liq(ptv[last_liq_pts[it]].Calc_Time(t, segv, sim, sim.mat.T_liq));
-//					ptv[last_liq_pts[it]].set_t_last_sol(0.0);
-//				}
-//				if (ptv[last_liq_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_sol) {
-//					if (ptv[last_liq_pts[it]].get_t_last_sol() == 0.0) {
-//						ptv[last_liq_pts[it]].set_t_last_sol(ptv[last_liq_pts[it]].Calc_Time(t, segv, sim, sim.mat.T_sol));
+//				if (ptv[last_liq_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) { 
+//					//ptv[last_liq_pts[it]].Solidify(t, segv, sim);
+//					if (sim.mat.T_liq != sim.mat.T_sol) {			
+//						ptv[last_liq_pts[it]].set_t_last_liq(ptv[last_liq_pts[it]].Calc_Time(t, segv, sim, sim.mat.T_liq));
 //					}
+//					else if (sim.mat.T_liq == sim.mat.T_sol && ptv[last_liq_pts[it]].get_t_last_sol() < ptv[last_liq_pts[it]].get_t_last_liq()) {
+//						ptv[last_liq_pts[it]].set_t_last_sol(ptv[last_liq_pts[it]].Calc_Time(t, segv, sim, sim.mat.T_liq));
+//					}
+//					///////SOLIDIFY REST OF COLUMN/////////	
+//					int i = ptv[last_liq_pts[it]].get_i();
+//					int j = ptv[last_liq_pts[it]].get_j();
+//					int dnum = i * sim.param.ynum + j;
+//					int depth = depths[dnum];
+//					for (int d = depth; d > 0; d--) {
+//						int pnum = Util::ijk_to_p(i, j, sim.param.znum - 1 - d, sim);
+//						ptv[pnum].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0);
+//						if (d != depth) {ptv[pnum].Temp_Calc_Pre_Path(t-sim.param.dt, isegv_last, sim, -1, 0);}
+//						//ptv[pnum].Solidify(t, segv, sim);
+//						if (sim.mat.T_liq != sim.mat.T_sol) {
+//							ptv[pnum].set_t_last_liq(ptv[pnum].Calc_Time(t, segv, sim, sim.mat.T_liq));
+//						}
+//						else if (sim.mat.T_liq == sim.mat.T_sol && ptv[pnum].get_t_last_sol() < ptv[pnum].get_t_last_liq()) {
+//							ptv[pnum].set_t_last_sol(ptv[pnum].Calc_Time(t, segv, sim, sim.mat.T_liq));
+//						}
+//						th_reset_pts.push_back(pnum);
+//					}
+//					depths[dnum] = 0;
 //				}
-//				else { th_liq_pts.push_back(last_liq_pts[it]); }
+//				else {th_liq_pts.push_back(last_liq_pts[it]);}
 //			}
 //			#pragma omp critical
-//			liq_pts.insert(liq_pts.end(), th_liq_pts.begin(), th_liq_pts.end());
+//			{
+//				liq_pts.insert(liq_pts.end(), th_liq_pts.begin(), th_liq_pts.end());
+//				reset_pts.insert(reset_pts.end(), th_reset_pts.begin(), th_reset_pts.end());
+//			}
 //		}
 //
 //		//Start search from points that are known to be liquid
-//		std::vector<int> test_pts = liq_pts;
+//		vector<int> test_pts = last_liq_pts;
 //
-//		// Trace beam path between time steps and add relevant points to the test vector if:
-//		std::vector<int> bm_tr_pts;
+//		// Trace beam path between time steps and add relevant points to the test vector
+//		vector<int> bm_tr_pts;
 //		if (itert && t < sim.util.scanEndTime + sim.param.dt) { Melt::beam_trace(bm_tr_pts, ptv, segv, sim, seg_num, itert, itert - 1); }
 //		for (int it = 0; it < bm_tr_pts.size(); it++) {
 //			reset_pts.push_back(bm_tr_pts[it]);
-//			double T = ptv[bm_tr_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0);
-//			double z = ptv[bm_tr_pts[it]].get_z();
-//			if (T >= sim.mat.T_sol && (T <= sim.mat.T_liq + 100.0 || z==0.0) ) {
+//			if (ptv[bm_tr_pts[it]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) >= sim.mat.T_liq) {
 //				test_pts.push_back(bm_tr_pts[it]);
 //				liq_pts.push_back(bm_tr_pts[it]);
 //			}
@@ -730,8 +762,11 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 //		//Iterative loop expanding from previously identified points to find melt pool boundary
 //		while (true) {
 //			if (!test_pts.size()) { break; }
-//			Melt::neighbor_check(test_pts, liq_pts, reset_pts, ptv, lock, t, isegv, sim, 0);
+//			Melt::neighbor_check(test_pts, liq_pts, reset_pts, ptv, lock, t, isegv, sim, 1);
 //		}
+//
+//		//Check the depths of the meltpool, solidify if needed
+//		Melt::calc_depth(depths, liq_pts, reset_pts, ptv, t, isegv, isegv_last, segv, sim);
 //
 //		//Out::Progress_Iter(sim, itert); //Output progress
 //		if (itert && (itert % sim.param.out_freq == 0)) {
@@ -739,13 +774,13 @@ void Run::Mode_3_PINT(std::vector<Point>& ptv_master, std::vector<path_seg>& seg
 //		}
 //		//Check if simulation is finished
 //		if (Util::sim_finish(t, sim, liq_pts.size())) {
-//			if (itert / sim.param.out_freq) { Out::Write_csv(ptv, sim, Util::ZeroPadNumber(itert), sim.setting.out_mode); }
+//			if (itert / sim.param.out_freq) {Out::Write_csv(ptv, sim, Util::ZeroPadNumber(itert), sim.setting.out_mode);}
 //			break;
 //		}
-//		t += sim.param.dt;		//Increment time
-//		itert++;				//Increment time step counter
+//		t += sim.param.dt;			//Increment time
+//		itert++;					//Increment time step counter
+//		isegv_last = isegv;
 //		isegv.clear();
 //	}
-//
 //	return;
 //}

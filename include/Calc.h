@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,18 +35,24 @@
 #pragma once
 #include <vector>
 #include "DataStructs.h"
+
+using std::vector;
+using std::string;
+
 namespace Calc {
 	// Chooses the mode of integrations. Only compares methods if it's not for a single point solidifying
-	void Integrate(std::vector<int_seg>&, std::vector<std::vector<int_seg>>&, std::vector<path_seg>&, Simdat&, std::vector<int>&, int, double, int, int);
-	void Integrate_thread(std::vector<int_seg>&,std::vector<path_seg>&, Simdat&, double, int);
+	void Integrate(vector<int_seg>&, vector<vector<int_seg>>&, vector<path_seg>&, Simdat&, vector<int>&, int, double, int, int);
+	void Integrate_thread(vector<int_seg>&,vector<path_seg>&, Simdat&, double, int);
 
 	// Adaptive Integration Scheme
-	void GaussIntegrate(std::vector<int_seg>&, std::vector<path_seg>&, Simdat&, double, int);
+	void GaussIntegrate(vector<int_seg>&, vector<path_seg>&, Simdat&, double, int);
 	// Adaptive Integration Scheme with a compression scheme between neighboring path segments. Very usefull for point rasters.
-	void GaussCompressIntegrate(std::vector<int_seg>&, std::vector<path_seg>&, Simdat&, double, int);
+	void GaussCompressIntegrate(vector<int_seg>&, vector<path_seg>&, Simdat&, double, int);
+	// Adaptive Integration Scheme for use with multiple independent beams
+	void GaussIntegrateInfBeams(vector<infBeam>&, Simdat&, double, int);
 
 	// Adds Simple boundary conditions (x and y) via method of images
-	void AddBCs(std::vector<int_seg>&, Simdat&);
+	void AddBCs(vector<int_seg>&, Simdat&);
 	
-	void UseParBeams(std::vector<int_seg>&, Simdat&);
+	void UseParBeams(vector<int_seg>&, Simdat&);
 }

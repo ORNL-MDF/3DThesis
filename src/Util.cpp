@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -44,7 +44,7 @@
 #include "DataStructs.h"
 #include "Point.h"
 
-std::string Util::ZeroPadNumber(int num)
+string Util::ZeroPadNumber(int num)
 {
 	std::ostringstream ss;
 	ss << std::setw(7) << std::setfill('0') << num;
@@ -83,7 +83,7 @@ void	Util::MakePoint(Point& point, Simdat& sim, int p) {
 	point.set_zloc(zp);
 }
 
-void	Util::SetLocks(std::vector<omp_lock_t>& lock, Simdat& sim) {
+void	Util::SetLocks(vector<omp_lock_t>& lock, Simdat& sim) {
 	for (int p = 0; p < lock.size(); p++) { omp_init_lock(&(lock[p])); }
 	return;
 }
@@ -115,7 +115,7 @@ bool	Util::InRMax(double x, double y, Simdat& sim) {
 	else {return true;}
 }
 
-void	Util::InitStartSeg(std::vector<int>& seg_num, std::vector<path_seg> segv, Simdat& sim) {
+void	Util::InitStartSeg(vector<int>& seg_num, vector<path_seg> segv, Simdat& sim) {
 	double f_time = sim.util.scanEndTime;
 	int seg_n = 0;
 	double a = 0.0;
@@ -130,7 +130,7 @@ void	Util::InitStartSeg(std::vector<int>& seg_num, std::vector<path_seg> segv, S
 	return;
 }
 
-void	Util::GetStartSeg(Simdat& sim,std::vector<int>& seg_num, int itert) {
+void	Util::GetStartSeg(Simdat& sim,vector<int>& seg_num, int itert) {
 	if (itert < seg_num.size()) { sim.util.start_seg = seg_num[itert]; }
 	else { sim.util.start_seg = seg_num[seg_num.size() - 1]; }
 	if (!sim.util.start_seg) { sim.util.start_seg = 1; }
@@ -155,7 +155,7 @@ double	Util::t0calc(double t, Simdat& sim) {
 	return t0;
 }
 
-double	Util::GetRefTime(double& spp, std::vector<path_seg>& segv, Simdat& sim, int& seg) {
+double	Util::GetRefTime(double& spp, vector<path_seg>& segv, Simdat& sim, int& seg) {
 	
 	if (spp < 0) { spp = 0; }
 
@@ -174,7 +174,26 @@ double	Util::GetRefTime(double& spp, std::vector<path_seg>& segv, Simdat& sim, i
 	return ref_t;
 }
 
-int_seg	Util::GetBeamLoc(double time, std::vector<path_seg>& segv, Simdat& sim, int& ref_seg_start) {
+double	Util::GetRefTimeShape(double& spp, infBeam& beam, Simdat& sim, int& seg) {
+
+	if (spp < 0) { spp = 0; }
+
+	double ref_t, dt_cur;
+
+	dt_cur = beam.ssegv[seg].seg_time - beam.ssegv[seg - 1].seg_time;
+
+	if (beam.ssegv[seg].smode) {	//Sets maximum time for spot mode (equal to spot time)
+		ref_t = dt_cur;
+		if (ref_t == 0) { ref_t = 1.0e-9; }
+	}
+	else {	//Sets maximum time for line mode (derived from diffusion distance)
+		double t0 = 0.59 * beam.min_axy / beam.ssegv[seg].sparam; // sqrt(log(sqrt(2)))~0.59
+		ref_t = t0 * sqrt(12 * spp + 1);
+	}
+	return ref_t;
+}
+
+int_seg	Util::GetBeamLoc(double time, vector<path_seg>& segv, Simdat& sim, int& ref_seg_start) {
 
 	int ref_seg = ref_seg_start;
 	int flag = 1;
@@ -216,9 +235,60 @@ int_seg	Util::GetBeamLoc(double time, std::vector<path_seg>& segv, Simdat& sim, 
 	return current_seg;
 }
 
-void	Util::EstimateEndTime(Simdat& sim, std::vector<path_seg>& segv) {
+int_shape_seg	Util::GetBeamLocShape(double time, vector<path_shape_seg>& segv, Simdat& sim, int& ref_seg_start) {
+	int ref_seg = ref_seg_start;
+	int flag = 1;
+	double dx, dy, dz, tcur, dt_cur;
+	double dax, day, daz;
+	int_shape_seg current_seg;
+	//int ref_seg = sim.start_seg;
+	int seg = 0;
+
+	//Skips binary search, starts at known segment
+	while (flag && ref_seg) {
+		if (time < segv[ref_seg - 1].seg_time) {
+			ref_seg--;
+		}
+		else {
+			seg = ref_seg;
+			flag = 0;
+		}
+	}
+
+	if (segv[seg].smode) {	//Location calculation for spot mode
+		current_seg.xb = segv[seg].sx;
+		current_seg.yb = segv[seg].sy;
+		current_seg.zb = segv[seg].sz;
+		current_seg.ax = segv[seg].ax;
+		current_seg.ay = segv[seg].ay;
+		current_seg.az = segv[seg].az;
+	}
+	else {							//Location calculation for line mode
+		dx = segv[seg].sx - segv[seg - 1].sx;
+		dy = segv[seg].sy - segv[seg - 1].sy;
+		dz = segv[seg].sz - segv[seg - 1].sz;
+		tcur = time - segv[seg - 1].seg_time;
+		dt_cur = segv[seg].seg_time - segv[seg - 1].seg_time;
+		current_seg.xb = segv[seg - 1].sx + (tcur / dt_cur) * dx;
+		current_seg.yb = segv[seg - 1].sy + (tcur / dt_cur) * dy;
+		current_seg.zb = segv[seg - 1].sz + (tcur / dt_cur) * dz;
+		dax = segv[seg].ax - segv[seg - 1].ax;
+		day = segv[seg].ay - segv[seg - 1].ay;
+		daz = segv[seg].az - segv[seg - 1].az;
+		current_seg.ax = segv[seg - 1].ax + (tcur / dt_cur) * dax;
+		current_seg.ay = segv[seg - 1].ay + (tcur / dt_cur) * day;
+		current_seg.az = segv[seg - 1].az + (tcur / dt_cur) * daz;
+	}
+
+	if (Util::InRMax(current_seg.xb, current_seg.yb, sim)) { current_seg.qmod = segv[seg].sqmod; }
+	else { current_seg.qmod = 0.0; }
+
+	return current_seg;
+}
+
+void	Util::EstimateEndTime(Simdat& sim, vector<path_seg>& segv) {
 	if (!sim.param.use_PINT) { sim.util.approxEndTime = sim.util.scanEndTime; return; }
-	std::vector<Point> points;
+	vector<Point> points;
 	//Add centroid point
 	double sum_tp = 0, sum_xtp = 0, sum_ytp = 0;
 	double x_av, y_av;
@@ -243,7 +313,7 @@ void	Util::EstimateEndTime(Simdat& sim, std::vector<path_seg>& segv) {
 	pt_temp.set_xloc(x_av);
 	pt_temp.set_yloc(y_av);
 	pt_temp.set_zloc(0.0);
-	pt_temp.Initialize();
+	pt_temp.Initialize(sim);
 	points.push_back(pt_temp);
 
 	//Add centroid of last THNUM path segments with power
@@ -272,7 +342,7 @@ void	Util::EstimateEndTime(Simdat& sim, std::vector<path_seg>& segv) {
 		int liq_num = 0;
 
 		//Pre-calculate integration loop information
-		std::vector<int_seg> isegv;
+		vector<int_seg> isegv;
 		Calc::GaussIntegrate(isegv, segv, sim, t, 0);
 		#pragma omp parallel for num_threads(sim.setting.thnum) schedule(static)
 		for (int pnum = 0; pnum < points.size(); pnum++) {

@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,23 +37,30 @@
 #include <deque>
 #include "DataStructs.h"
 #include "Point.h"
+
+using std::vector;
+using std::string;
+
 namespace Run{
 	//Chooses between modes
-	void Simulate(std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&);
+	void Simulate(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
 	
 	//Take a Temperature snapshot at end of the path
-	void Mode_0(std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&);
+	void Mode_0(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
 
 	//Track all points at all times
-	void Mode_1(std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&);
+	void Mode_1(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
 
 	//Track only meltpool at all times
-	void Mode_2(std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&);
+	void Mode_2(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
 	//Mode_2, parallel in time, godPoints
-	void Mode_2_PINT(std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&);
+	void Mode_2_PINT(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
 
 	//Track only meltpool perimeter at all times
-	void Mode_3(std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&);
+	void Mode_3(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
 	//Mode_3, parallel in time
-	void Mode_3_PINT(std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&);
+	void Mode_3_PINT(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
+
+	//Track like 2 surfaces at the same time or something... for Matt's CA code
+	/*void Mode_4(Point* const ptv, vector<path_seg>&, Simdat&, vector<int>&);*/
 }

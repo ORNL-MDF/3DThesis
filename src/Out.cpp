@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -67,15 +67,15 @@ void Out::Point_Progress(Simdat& sim, int p) {
 	return;
 }
 
-void Out::Write_csv(std::vector<Point>& ptv, Simdat& sim, std::string name, int out_mode) {
+void Out::Write_csv(Point * const ptv, Simdat& sim, string name, int out_mode) {
 	std::ofstream datafile;
 	datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-	std::string out_file = "Data/" + sim.file.name + "/" + sim.file.name + "." + name + ".csv";
+	string out_file = "Data/" + sim.file.name + "/" + sim.file.name + "." + name + ".csv";
 	try {
 		datafile.open(out_file.c_str());
 		if (out_mode == 0) {
 			datafile << "x,y,z,T\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
 					datafile << ptv[p].get_T() << "\n";
@@ -84,7 +84,7 @@ void Out::Write_csv(std::vector<Point>& ptv, Simdat& sim, std::string name, int 
 		}
 		else if (out_mode == 1) {
 			datafile << "x,y,z,T,G,V\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
 					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << "\n";
@@ -93,44 +93,50 @@ void Out::Write_csv(std::vector<Point>& ptv, Simdat& sim, std::string name, int 
 		}
 		else if (out_mode == 2) {
 			datafile << "x,y,z,T,G,V,dTdt,eq_frac\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
 					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << ",";
-					datafile << ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << "\n";
+					datafile << -ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << "\n";
 				}
 			}
 		}
 		else if (out_mode == 3) {
 			datafile << "x,y,z,T,G,V,dTdt,eq_frac,Gx,Gy,Gz\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
 					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << "," ;
-					datafile << ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << ",";
+					datafile << -ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << ",";
 					datafile << ptv[p].get_Gxu() << "," << ptv[p].get_Gyu() << "," << ptv[p].get_Gzu() << "\n";
 				}
 			}
 		}
 		else if (out_mode == 4) {
 			datafile << "x,y,z,T,G,V,dTdt,eq_frac,Gx,Gy,Gz,H,Hx,Hy,Hz\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
 					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << ",";
-					datafile << ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << ",";
+					datafile << -ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << ",";
 					datafile << ptv[p].get_Gxu() << "," << ptv[p].get_Gyu() << "," << ptv[p].get_Gzu() << ",";
 					datafile << ptv[p].get_H() << "," << ptv[p].get_Hxu() << "," << ptv[p].get_Hyu() << "," << ptv[p].get_Hzu() << "\n";
 				}
 			}
 		}
 		else {
-			datafile << "x,y,z,tl,ts\n";
-			for (int p = 0; p < ptv.size(); p++) {
-				if (ptv[p].get_output_flag()) {
-					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << "," << ptv[p].get_t_last_liq() << "," << ptv[p].get_t_last_sol() << "\n";
+			datafile << "x,y,z,tl,cr\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
+				if (ptv[p].get_output_flag() && ptv[p].get_t_last_liq() > 0.0) {
+					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << "," << ptv[p].get_t_last_liq() << "," << ptv[p].get_dTdt_sol() << "\n";
 				}
 			}
+			/*datafile << "x,y,z,tl,ts\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
+				if (ptv[p].get_output_flag() && ptv[p].get_t_last_liq() > 0.0) {
+					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << "," << ptv[p].get_t_last_liq() << "," << ptv[p].get_t_last_sol() << "\n";
+				}
+			}*/
 		}
 	}
 	catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
@@ -138,15 +144,15 @@ void Out::Write_csv(std::vector<Point>& ptv, Simdat& sim, std::string name, int 
 	return;
 }
 
-void Out::Write_csv_PINT(std::deque<Point>& ptv, Simdat& sim, std::string name, int out_mode) {
+void Out::Write_csv_PINT(std::deque<Point>& ptv, Simdat& sim, string name, int out_mode) {
 	std::ofstream datafile;
 	datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-	std::string out_file = "Data/" + sim.file.name + "/" + sim.file.name + "." + name + ".csv";
+	string out_file = "Data/" + sim.file.name + "/" + sim.file.name + "." + name + ".csv";
 	try {
 		datafile.open(out_file.c_str());
 		if (out_mode == 0) {
 			datafile << "x,y,z,T\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
 					datafile << ptv[p].get_T() << "\n";
@@ -154,44 +160,94 @@ void Out::Write_csv_PINT(std::deque<Point>& ptv, Simdat& sim, std::string name, 
 			}
 		}
 		else if (out_mode == 1) {
-			datafile << "x,y,z,T,G,V,dTdt,eq_frac\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			datafile << "x,y,z,T,G,V\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
-					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << "," << ptv[p].get_dTdt_sol() << ",";
-					datafile << ptv[p].get_eq_frac() << "\n";
+					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << "\n";
 				}
 			}
 		}
 		else if (out_mode == 2) {
-			datafile << "x,y,z,T,G,V,dTdt,Gx,Gy,Gz,eq_frac\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			datafile << "x,y,z,T,G,V,dTdt,eq_frac\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
-					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << "," << ptv[p].get_dTdt_sol() << ",";
-					datafile << ptv[p].get_Gxu() << "," << ptv[p].get_Gyu() << "," << ptv[p].get_Gzu() << ",";
-					datafile << ptv[p].get_eq_frac() << "\n";
+					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << ",";
+					datafile << -ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << "\n";
 				}
 			}
 		}
 		else if (out_mode == 3) {
-			datafile << "x,y,z,T,G,V,dTdt,H,Gx,Gy,Gz,Hx,Hy,Hz,eq_frac\n";
-			for (int p = 0; p < ptv.size(); p++) {
+			datafile << "x,y,z,T,G,V,dTdt,eq_frac,Gx,Gy,Gz\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
 				if (ptv[p].get_output_flag()) {
 					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
-					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << "," << ptv[p].get_dTdt_sol() << "," << ptv[p].get_H() << ",";
+					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << ",";
+					datafile << -ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << ",";
+					datafile << ptv[p].get_Gxu() << "," << ptv[p].get_Gyu() << "," << ptv[p].get_Gzu() << "\n";
+				}
+			}
+		}
+		else if (out_mode == 4) {
+			datafile << "x,y,z,T,G,V,dTdt,eq_frac,Gx,Gy,Gz,H,Hx,Hy,Hz\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
+				if (ptv[p].get_output_flag()) {
+					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
+					datafile << ptv[p].get_T() << "," << ptv[p].get_G() << "," << ptv[p].get_V() << ",";
+					datafile << -ptv[p].get_dTdt_sol() << "," << ptv[p].get_eq_frac() << ",";
 					datafile << ptv[p].get_Gxu() << "," << ptv[p].get_Gyu() << "," << ptv[p].get_Gzu() << ",";
-					datafile << ptv[p].get_Hxu() << "," << ptv[p].get_Hyu() << "," << ptv[p].get_Hzu() << ",";
-					datafile << ptv[p].get_eq_frac() << "\n";
+					datafile << ptv[p].get_H() << "," << ptv[p].get_Hxu() << "," << ptv[p].get_Hyu() << "," << ptv[p].get_Hzu() << "\n";
 				}
 			}
 		}
 		else {
-			datafile << "x,y,z,t_last_liq\n";
-			for (int p = 0; p < ptv.size(); p++) {
-				if (ptv[p].get_output_flag()) {
-					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << "," << ptv[p].get_t_last_liq() << "\n";
+			datafile << "x,y,z,tl,cr\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
+				if (ptv[p].get_output_flag() && ptv[p].get_t_last_liq() > 0.0) {
+					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << "," << ptv[p].get_t_last_liq() << "," << ptv[p].get_dTdt_sol() << "\n";
 				}
+			}
+			/*datafile << "x,y,z,tl,ts\n";
+			for (int p = 0; p < sim.param.pnum; p++) {
+				if (ptv[p].get_output_flag() && ptv[p].get_t_last_liq() > 0.0) {
+					datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << "," << ptv[p].get_t_last_liq() << "," << ptv[p].get_t_last_sol() << "\n";
+				}
+			}*/
+		}
+	}
+	catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
+	datafile.close();
+	return;
+}
+
+void Out::Write_T_hist(Point * const ptv, Simdat& sim, string name) {
+	std::ofstream datafile;
+	datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	string out_file = "Data/" + sim.file.name + "/" + sim.file.name + "." + name + ".csv";
+	int max_len = 0;
+	for (int p = 0; p < sim.param.pnum; p++) {
+		int len = ptv[p].get_T_hist().size();
+		if (len > max_len) {max_len = len;}
+	}
+	try {
+		datafile.open(out_file.c_str());
+		datafile << "x,y,z,";
+		for (int t_i = 0; t_i < max_len; t_i++) {datafile << "T(" << t_i * sim.param.dt << " s),";}
+		datafile << "\n";
+		for (int p = 0; p < sim.param.pnum; p++) {
+			if (ptv[p].get_output_flag()) {
+				datafile << ptv[p].get_x() << "," << ptv[p].get_y() << "," << ptv[p].get_z() << ",";
+				vector<double> T_hist = ptv[p].get_T_hist();
+				vector<int> T_hist_iter = ptv[p].get_T_hist_iter();
+				int iter_temp = 0;
+				for (int iter = 0; iter < max_len; iter++) { 
+					if (T_hist_iter.size()==iter_temp) { datafile << T_hist[iter_temp - 1] << ","; }
+					else if (T_hist_iter[iter_temp] == iter) { datafile << T_hist[iter_temp] << ","; iter_temp++; }
+					else if (iter_temp) { datafile << T_hist[iter_temp - 1] << ","; }
+					else {datafile << sim.mat.Tinit << ","; }
+				}
+				datafile << "\n";
 			}
 		}
 	}

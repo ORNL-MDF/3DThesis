@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -38,14 +38,17 @@
 #include "Calc.h"
 #include "Util.h"
 
-void Calc::Integrate(std::vector<int_seg>& isegv, std::vector<std::vector<int_seg>>& isegv_par, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num, int itert, double t, int sol, int par_num) {
+
+#include <iostream>
+#include <fstream>
+void Calc::Integrate(vector<int_seg>& isegv, vector<vector<int_seg>>& isegv_par, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num, int itert, double t, int sol, int par_num) {
 	Util::GetStartSeg(sim, seg_num, itert);
-	if (par_num>1) {
+	if (par_num>1 && !sim.setting.infBeams) {
 		if (!isegv_par.size()) {
 			isegv_par.resize(par_num);
 			#pragma omp parallel num_threads(par_num)
 			{
-				std::vector<int_seg> th_isegv;
+				vector<int_seg> th_isegv;
 				Simdat th_sim = sim;
 				#pragma omp for schedule(static)
 				for (int i = 0; i < par_num; i++) {
@@ -58,31 +61,46 @@ void Calc::Integrate(std::vector<int_seg>& isegv, std::vector<std::vector<int_se
 		isegv = isegv_par.back();
 		isegv_par.pop_back();
 	}
-	else {Calc::Integrate_thread(isegv, segv, sim, t, sol);}
+	else {
+		Calc::Integrate_thread(isegv, segv, sim, t, sol);
+	}
 	return;
 }
 
-void Calc::Integrate_thread(std::vector<int_seg>& isegv, std::vector<path_seg>& segv, Simdat& sim, double t, int sol) {
-	if (sim.setting.compress) { 
+void Calc::Integrate_thread(vector<int_seg>& isegv, vector<path_seg>& segv, Simdat& sim, double t, int sol) {
+	if (sim.setting.infBeams) {
+		Calc::GaussIntegrateInfBeams(sim.infBeams, sim, t, sol);
+	}
+	else if (sim.setting.compress) { 
 		Calc::GaussCompressIntegrate(isegv, segv, sim, t, sol); 
 		//If not solidifying, always choose the minimum of the two; otherwise, too expensive
-		/*if (!sol) {
-			std::vector<int_seg> isegv_reg;
-			Calc::GaussIntegrate(isegv_reg, segv, sim, t, sol);
-			if (isegv_reg.size() <= isegv.size()) { isegv = isegv_reg; }
-		}*/
+		//if (!sol) {
+		//	vector<int_seg> isegv_reg;
+		//	Calc::GaussIntegrate(isegv_reg, segv, sim, t, sol);
+		//	if (isegv_reg.size() <= isegv.size()) { isegv = isegv_reg; }
+		//}
 	}
-	else { Calc::GaussIntegrate(isegv, segv, sim, t, sol); }
+	else { 
+		Calc::GaussIntegrate(isegv, segv, sim, t, sol); 
+	}
 
 	if (sim.setting.parBeams) { Calc::UseParBeams(isegv, sim); }
-	if (sim.setting.use_BCs){ Calc::AddBCs(isegv, sim); }
+	if (sim.setting.use_BCs) { Calc::AddBCs(isegv, sim); }
+
+	const int org_size = isegv.size();
+	for (int i = 0; i < org_size; i++) {
+		int_seg tmp = isegv[i];
+		tmp.zb = -80e-6; isegv.push_back(tmp);	
+		tmp.zb = 80e-6; isegv.push_back(tmp);
+		tmp.zb = -160e-6; isegv.push_back(tmp);
+	}
 
 	return;
 }
 
-void Calc::GaussIntegrate(std::vector<int_seg>& isegv, std::vector<path_seg>& segv, Simdat& sim, double t, int sol) {
+void Calc::GaussIntegrate(vector<int_seg>& isegv, vector<path_seg>& segv, Simdat& sim, double t, int sol) {
 	int seg_temp = sim.util.start_seg; //Stores the starting seg to change it back
-	
+
 	while ((t > segv[seg_temp].seg_time) && (t < sim.util.scanEndTime)) { seg_temp++; }
 	while (t < segv[seg_temp - 1].seg_time) { seg_temp--; }
 
@@ -111,8 +129,8 @@ void Calc::GaussIntegrate(std::vector<int_seg>& isegv, std::vector<path_seg>& se
 	int_seg current_beam = Util::GetBeamLoc(t, segv, sim, seg_temp); //Make 1st segment at the exact time...for instantaneous heat source additon to laplacian
 	current_beam.taui = t;
 	current_beam.dtau = 0.0;
-	if (t > sim.util.scanEndTime) { current_beam.qmod = 0.0; }
-	isegv.push_back(current_beam);
+	if (t <= sim.util.scanEndTime) { isegv.push_back(current_beam); }
+	
 
 	int tflag = 1;
 	double t2 = t;
@@ -157,7 +175,7 @@ void Calc::GaussIntegrate(std::vector<int_seg>& isegv, std::vector<path_seg>& se
 			int_seg current_beam = Util::GetBeamLoc(tp, segv, sim, seg_temp);
 			current_beam.taui = tp;
 			current_beam.dtau = 0.5 * (t2 - t1) * weights[a];
-			if (current_beam.qmod > 0.0 && current_beam.dtau) { isegv.push_back(current_beam); }
+			if (current_beam.qmod > 0.0 && current_beam.dtau > 0.0) { isegv.push_back(current_beam); }
 		}
 
 		//If we are switching segments, set start time to start of next segment and increment the start segment down
@@ -183,7 +201,7 @@ void Calc::GaussIntegrate(std::vector<int_seg>& isegv, std::vector<path_seg>& se
 	return;
 }
 
-void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_seg>& segv, Simdat& sim, double t, int sol) {
+void Calc::GaussCompressIntegrate(vector<int_seg>& isegv, vector<path_seg>& segv, Simdat& sim, double t, int sol) {
 	int seg_temp = sim.util.start_seg; //Stores the starting seg to change it back
 
 	while ((t > segv[seg_temp].seg_time) && (t < sim.util.scanEndTime)) { seg_temp++; }
@@ -247,13 +265,18 @@ void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_
 		//If the time is less than t0, break the whole thing
 		int quit = 0;
 		//If outside r, then keep going down until back in r
+		//NOTE:Only looks at end of scan path...good for points but not lines
 		while (true) {
 			xs = segv[seg_temp].sx;
 			ys = segv[seg_temp].sy;
 			ts = segv[seg_temp].seg_time;
 			if (ts <= t0) { quit = 1; break; }
-			if (!Util::InRMax(xs, ys, sim)) { seg_temp--; }
-			else { tpp += t2 - ts; spp = tpp / sim.util.nond_dt; t2 = ts; break; }
+			// If in R, quit loop
+			if (Util::InRMax(xs, ys, sim)) { break; }
+			// If outside R, add cumulative time, set time to be end of segment
+			else { tpp += t2 - ts; spp = tpp / sim.util.nond_dt; t2 = ts; }
+			// if (!Util::InRMax(xs, ys, sim)) { seg_temp--; }
+			// else { tpp += t2 - ts; spp = tpp / sim.util.nond_dt; t2 = ts; break; }
 		}
 		if (quit) { break; }
 
@@ -280,7 +303,10 @@ void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_
 		double t1 = segv[seg_temp - 1].seg_time;
 
 		//If we won't be switching segments, do normal integration
-		if (t1 < t2 - curStep_use) { num_comb_segs = 0; t1 = t2 - curStep_use; }
+		if (t1 < t2 - curStep_use) {
+			num_comb_segs = 0; 
+			t1 = t2 - curStep_use; 
+		}
 		else {
 			int cflag = 1;
 			while (cflag) { //If we will be switching segments, do compressed integration
@@ -293,6 +319,7 @@ void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_
 				ts = segv[seg_temp_2 - 1].seg_time;
 
 				// If the next segment is outside the calculation domain, break the loop
+				// NOTE:Only looks at end of scan path...good for points but not lines
 				if (!Util::InRMax(xp, yp, sim)) { break; }
 
 				// IF 
@@ -303,7 +330,7 @@ void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_
 				//	stop combining segments and finalize
 				// ELSE
 				//  If the distance of the next segment is less than the diffusion distance, set end time to next segment, average them, and keep going
-				if (dist2 > r2 || (segv[seg_temp_2].sqmod != segv[seg_temp_2 - 1].sqmod && (curOrder > 2 || (t2 - ts) > (curStep_max / 64.0)))) {
+				if ((dist2 > r2) || (segv[seg_temp_2].sqmod != segv[seg_temp_2 - 1].sqmod && (curOrder > 2 || (t2 - ts) > (curStep_max / 64.0)))) {
 					//If point, do averaging calculations and set new end time to the next segment
 					if (segv[seg_temp_2].smode) {
 						sum_qmodtx += segv[seg_temp_2].sx*segv[seg_temp_2].sqmod*(t1 - ts);
@@ -386,7 +413,7 @@ void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_
 					double tp = 0.5 * ((t2 - t1)*nodes[a] + (t2 + t1));
 					current_beam.taui = tp;
 					current_beam.dtau = 0.5 * (t2 - t1) * weights[a];
-					if (current_beam.qmod > 0.0 && current_beam.dtau) { isegv.push_back(current_beam); }
+					if ((current_beam.qmod > 0.0) && (current_beam.dtau > 0.0)) { isegv.push_back(current_beam); }
 				}
 			}
 
@@ -398,10 +425,9 @@ void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_
 				int_seg current_beam = Util::GetBeamLoc(tp, segv, sim, seg_temp);
 				current_beam.taui = tp;
 				current_beam.dtau = 0.5 * (t2 - t1) * weights[a];
-				if (current_beam.qmod > 0.0 && current_beam.dtau) { isegv.push_back(current_beam); }
+				if ((current_beam.qmod > 0.0) && (current_beam.dtau > 0.0)) { isegv.push_back(current_beam); }
 			}
 		}
-
 
 		tpp += t2 - t1;
 		t2 = t1;
@@ -420,10 +446,138 @@ void Calc::GaussCompressIntegrate(std::vector<int_seg>& isegv, std::vector<path_
 	return;
 }
 
-void Calc::AddBCs(std::vector<int_seg>& isegv, Simdat& sim) {
+void Calc::GaussIntegrateInfBeams(vector<infBeam>& infBeams, Simdat& sim, double t, int sol) {	
+	for (infBeam& beam : infBeams) {
+		beam.issegv.clear();
+		int seg_temp = beam.ssegv.size() - 1; //Starts at end and decrements until at the right position
+		
+		while ((t > beam.ssegv[seg_temp].seg_time) && (t
+			< beam.scanEndTime)) { seg_temp++; }
+		while (t < beam.ssegv[seg_temp - 1].seg_time) { seg_temp--; }
+
+		double t0 = Util::t0calc(t, sim); //the time you want to integrate back too
+
+		double nodes[30] = {
+			-0.57735027,  0.57735027,
+			-0.86113631, -0.33998104,  0.33998104,  0.86113631,
+			-0.96028986, -0.79666648, -0.52553241, -0.18343464,  0.18343464,  0.52553241, 0.79666648,  0.96028986,
+			-0.98940093, -0.94457502, -0.8656312, -0.75540441, -0.61787624, -0.45801678, -0.28160355, -0.09501251, 0.09501251, 0.28160355, 0.45801678, 0.61787624, 0.75540441, 0.8656312, 0.94457502, 0.98940093
+		};
+		double weights[30] = {
+			1.0, 1.0,
+			0.34785485, 0.65214515, 0.65214515, 0.34785485,
+			0.10122854, 0.22238103, 0.31370665, 0.36268378, 0.36268378, 0.31370665, 0.22238103, 0.10122854,
+			0.02715246, 0.06225352, 0.09515851, 0.12462897, 0.14959599, 0.16915652,0.18260342, 0.18945061, 0.18945061, 0.18260342, 0.16915652, 0.14959599,0.12462897, 0.09515851, 0.06225352, 0.02715246
+		};
+
+		double curStep_max_start = beam.nond_dt;
+		if (sol) { curStep_max_start *= beam.min_a; }
+
+		double curStep_max = curStep_max_start;
+		double curStep_use = curStep_max;
+		int curOrder = 16;
+
+		int_shape_seg current_beam_shape;
+		current_beam_shape = Util::GetBeamLocShape(t, beam.ssegv, sim, seg_temp);
+		current_beam_shape.taui = t;
+		current_beam_shape.dtau = 0.0;
+		//Make 1st segment at the exact time...for instantaneous heat source additon to laplacian
+		if (!beam.shapeMod){ 
+			current_beam_shape.ax = sim.beam.ax;
+			current_beam_shape.ay = sim.beam.ay;
+			current_beam_shape.az = sim.beam.az;
+		}
+		if (t<=beam.scanEndTime){ beam.issegv.push_back(current_beam_shape); }
+		
+
+		int tflag = 1;
+		double t2 = t;
+		double tpp = 0.0;
+		double spp = tpp / beam.nond_dt;
+
+		if (t > beam.scanEndTime) {
+			tpp += t - beam.scanEndTime;
+			spp = tpp / beam.nond_dt;
+			t2 = beam.scanEndTime;
+		}
+
+		while (tpp >= 2 * curStep_max - curStep_max_start) {
+			curStep_max *= 2.0;
+			if (curOrder != 2) {
+				curOrder = (curOrder / 2);
+			}
+		}
+
+		while (tflag) {
+			int sflag = 0;
+			spp = tpp / beam.nond_dt;
+
+			double ref_time = Util::GetRefTimeShape(spp, beam, sim, seg_temp);
+
+			if (ref_time < curStep_max) { curStep_use = ref_time; }
+			else { curStep_use = curStep_max; }
+
+			double t1 = t2 - curStep_use;
+			double next_time = beam.ssegv[seg_temp - 1].seg_time;
+
+			//If we are at the end of a segment, hit the end of it and set the program to jump to the next segment next time
+			if (t1 < next_time) {
+				t1 = next_time;
+				if (next_time > t0) { sflag = 1; }
+				else { tflag = 0; }
+			}
+
+			//Add Quadrature Points
+			if (beam.shapeMod) {
+				for (int a = (2 * curOrder - 3); a > (curOrder - 3); a--) {
+					double tp = 0.5 * ((t2 - t1) * nodes[a] + (t2 + t1));
+					int_shape_seg current_beam_shape = Util::GetBeamLocShape(tp, beam.ssegv, sim, seg_temp);
+					current_beam_shape.taui = tp;
+					current_beam_shape.dtau = 0.5 * (t2 - t1) * weights[a];
+					if (current_beam_shape.qmod > 0.0 && current_beam_shape.dtau > 0.0) { beam.issegv.push_back(current_beam_shape); }
+				}
+			}
+			else {
+				for (int a = (2 * curOrder - 3); a > (curOrder - 3); a--) {
+					double tp = 0.5 * ((t2 - t1) * nodes[a] + (t2 + t1));
+					int_shape_seg current_beam_shape = Util::GetBeamLocShape(tp, beam.ssegv, sim, seg_temp);
+					current_beam_shape.taui = tp;
+					current_beam_shape.dtau = 0.5 * (t2 - t1) * weights[a];
+					current_beam_shape.ax = sim.beam.ax;
+					current_beam_shape.ay = sim.beam.ay;
+					current_beam_shape.az = sim.beam.az;
+					if (current_beam_shape.qmod > 0.0 && current_beam_shape.dtau > 0.0) { beam.issegv.push_back(current_beam_shape); }
+				}
+			}
+			
+			//If we are switching segments, set start time to start of next segment and increment the start segment down
+			if (sflag) {
+				t2 = next_time;
+				tpp += (t2 - next_time);
+				seg_temp--;
+			}
+			//If we are not switching segments, do the normal thing
+			else {
+				t2 -= curStep_use;
+				tpp += curStep_use;
+			}
+
+			//Increase Maximum Step and Decrease Gauss order if it is "safe" to
+			if (tpp >= 2 * curStep_max - curStep_max_start) {
+				curStep_max *= 2.0;
+				if (curOrder != 2) {
+					curOrder = (curOrder / 2);
+				}
+			}
+		}
+	}
+	return;
+}
+
+void Calc::AddBCs(vector<int_seg>& isegv, Simdat& sim) {
 	int org_size = isegv.size();
-	std::vector<int_seg> isegv_org = isegv;
-	std::vector<int_seg> isegv2=isegv_org;
+	vector<int_seg> isegv_org = isegv;
+	vector<int_seg> isegv2=isegv_org;
 	
 	double xmin, xmax, xStr;
 	double ymin, ymax, yStr;
@@ -473,20 +627,20 @@ void Calc::AddBCs(std::vector<int_seg>& isegv, Simdat& sim) {
 	return;
 }
 
-void Calc::UseParBeams(std::vector<int_seg>& isegv, Simdat& sim) {
+void Calc::UseParBeams(vector<int_seg>& isegv, Simdat& sim) {
 	int org_size = isegv.size();
-	std::vector<int_seg> isegv_org = isegv;
-	std::vector<int_seg> isegv2 = isegv_org;
+	vector<int_seg> isegv_org = isegv;
+	vector<int_seg> isegv2 = isegv_org;
 	isegv.clear();
 
-	int num_beams = sim.beams.size();
+	int num_beams = sim.parBeams.size();
 
 	for (int b = 0; b < num_beams; b++) {
 		isegv2 = isegv_org;
 		for (int i = 0; i < org_size; i++) {
-			isegv2[i].xb += sim.beams[b].Xr;
-			isegv2[i].yb += sim.beams[b].Yr;
-			isegv2[i].qmod *= sim.beams[b].Pmod;
+			isegv2[i].xb += sim.parBeams[b].Xr;
+			isegv2[i].yb += sim.parBeams[b].Yr;
+			isegv2[i].qmod *= sim.parBeams[b].Pmod;
 		}
 		isegv.insert(isegv.end(), isegv2.begin(), isegv2.end());
 	}

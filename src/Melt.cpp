@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -41,8 +41,12 @@
 #include "DataStructs.h"
 #include "Point.h"
 
-void Melt::beam_trace(std::vector<int>& test_pts, std::vector<Point>& ptv, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num, int itert_start, int itert_end) {
+void Melt::beam_trace(vector<int>& test_pts, Point * const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num, int itert_start, int itert_end) {
 	if (itert_start == seg_num.size()) { itert_start--; }
+	
+	if (sim.setting.infBeams) { Melt::beam_trace_infBeams(test_pts, ptv, segv, sim, seg_num, itert_start, itert_end); }
+	if (sim.setting.parBeams) { Melt::beam_trace_parBeams(test_pts, ptv, segv, sim, seg_num, itert_start, itert_end); }
+
 	int seg_temp_now = seg_num[itert_start];
 	int seg_temp_prev = seg_num[itert_end];
 
@@ -62,7 +66,7 @@ void Melt::beam_trace(std::vector<int>& test_pts, std::vector<Point>& ptv, std::
 		if (z_grid_num < 0) { z_grid_num = 0; z_flat = 0; }
 		else if (z_grid_num >= (sim.param.znum - 1)) { z_grid_num = sim.param.znum - 1; z_flat = 0; }
 
-		std::vector<int> point_nums;
+		vector<int> point_nums;
 		for (int a = 0; a <= z_flat; a++) {
 			for (int b = 0; b <= y_flat; b++) {
 				for (int c = 0; c <= x_flat; c++) {
@@ -105,15 +109,152 @@ void Melt::beam_trace(std::vector<int>& test_pts, std::vector<Point>& ptv, std::
 	return;
 }
 
-void Melt::neighbor_check(std::vector<int>& test_pts, std::vector<int>& liq_pts, std::vector<int>& reset_pts, std::vector<Point>& ptv, std::vector<omp_lock_t>& lock, double& t, std::vector<int_seg>& isegv, Simdat& sim, int surface_only) {
-	std::vector<int> test_tmp;
+void Melt::beam_trace_parBeams(vector<int>& test_pts, Point* const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num, int itert_start, int itert_end) {
+	if (itert_start == seg_num.size()) { itert_start--; }
+	int seg_temp_now = seg_num[itert_start];
+	int seg_temp_prev = seg_num[itert_end];
+
+	int point_num = 0;
+	int x_grid_num = 0, y_grid_num = 0, z_grid_num = 0;
+	int x_flat = 0, y_flat = 0, z_flat = 0;
+	for (int b = 0; b < sim.parBeams.size(); b++) {
+		for (int i = seg_temp_prev - 1; i <= seg_temp_now; i++) {
+			if (i < 0) { i = 0; }
+			if (sim.param.xnum - 1) { x_grid_num = (int)(((segv[i].sx + sim.parBeams[b].Xr) - sim.param.xmin) / sim.param.xres); x_flat = 1; }
+			if (sim.param.ynum - 1) { y_grid_num = (int)(((segv[i].sy + sim.parBeams[b].Yr) - sim.param.ymin) / sim.param.yres); y_flat = 1; }
+			if (sim.param.znum - 1) { z_grid_num = (int)((segv[i].sz - sim.param.zmin) / sim.param.zres); z_flat = 1; }
+
+			if (x_grid_num < 0) { x_grid_num = 0; x_flat = 0; }
+			else if (x_grid_num >= (sim.param.xnum - 1)) { x_grid_num = sim.param.xnum - 1; x_flat = 0; }
+			if (y_grid_num < 0) { y_grid_num = 0; y_flat = 0; }
+			else if (y_grid_num >= (sim.param.ynum - 1)) { y_grid_num = sim.param.ynum - 1; y_flat = 0; }
+			if (z_grid_num < 0) { z_grid_num = 0; z_flat = 0; }
+			else if (z_grid_num >= (sim.param.znum - 1)) { z_grid_num = sim.param.znum - 1; z_flat = 0; }
+
+			vector<int> point_nums;
+			for (int a = 0; a <= z_flat; a++) {
+				for (int b = 0; b <= y_flat; b++) {
+					for (int c = 0; c <= x_flat; c++) {
+						point_num = (z_grid_num + a) + sim.param.znum * (y_grid_num + b) + sim.param.znum * sim.param.ynum * (x_grid_num + c);
+						if (!ptv[point_num].get_T_calc_flag()) {
+							test_pts.push_back(point_num);
+							ptv[point_num].set_T_calc_flag();
+						}
+					}
+				}
+			}
+		}
+
+		if (segv[seg_num[itert_start]].smode == 0) {
+			int_seg current_beam = Util::GetBeamLoc(itert_start * sim.param.dt, segv, sim, sim.util.start_seg);
+			if (sim.param.xnum - 1) { x_grid_num = (int)(((current_beam.xb + sim.parBeams[b].Xr) - sim.param.xmin) / sim.param.xres); x_flat = 1; }
+			if (sim.param.ynum - 1) { y_grid_num = (int)(((current_beam.yb + sim.parBeams[b].Yr) - sim.param.ymin) / sim.param.yres); y_flat = 1; }
+			if (sim.param.znum - 1) { z_grid_num = (int)((current_beam.zb - sim.param.zmin) / sim.param.zres); z_flat = 1; }
+
+			if (x_grid_num < 0) { x_grid_num = 0; x_flat = 0; }
+			else if (x_grid_num >= (sim.param.xnum - 1)) { x_grid_num = sim.param.xnum - 1; x_flat = 0; }
+			if (y_grid_num < 0) { y_grid_num = 0; y_flat = 0; }
+			else if (y_grid_num >= (sim.param.ynum - 1)) { y_grid_num = sim.param.ynum - 1; y_flat = 0; }
+			if (z_grid_num < 0) { z_grid_num = 0; z_flat = 0; }
+			else if (z_grid_num >= (sim.param.znum - 1)) { z_grid_num = sim.param.znum - 1; z_flat = 0; }
+
+			for (int a = 0; a <= z_flat; a++) {
+				for (int b = 0; b <= y_flat; b++) {
+					for (int c = 0; c <= x_flat; c++) {
+						point_num = (z_grid_num + a) + sim.param.znum * (y_grid_num + b) + sim.param.znum * sim.param.ynum * (x_grid_num + c);
+						if (!ptv[point_num].get_T_calc_flag()) {
+							test_pts.push_back(point_num);
+							ptv[point_num].set_T_calc_flag();
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return;
+}
+
+void Melt::beam_trace_infBeams(vector<int>& test_pts, Point* const ptv, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num, int itert_start, int itert_end) {
+	for (infBeam& beam : sim.infBeams) {
+		if (itert_start == seg_num.size()) { itert_start--; }
+
+		double t_now = itert_start * sim.param.dt;
+		double t_prev = itert_end * sim.param.dt;
+
+		int seg_temp_now = 0; int seg_temp_prev = 0;
+		while (t_now > beam.ssegv[seg_temp_now].seg_time) { seg_temp_now++; }
+		while (t_prev > beam.ssegv[seg_temp_prev].seg_time) { seg_temp_prev++; }
+		seg_temp_now--; seg_temp_prev--;
+
+		int point_num = 0;
+		int x_grid_num = 0, y_grid_num = 0, z_grid_num = 0;
+		int x_flat = 0, y_flat = 0, z_flat = 0;
+		for (int i = seg_temp_prev - 1; i <= seg_temp_now; i++) {
+			if (i < 0) { i = 0; }
+			if (sim.param.xnum - 1) { x_grid_num = (int)((segv[i].sx - sim.param.xmin) / sim.param.xres); x_flat = 1; }
+			if (sim.param.ynum - 1) { y_grid_num = (int)((segv[i].sy - sim.param.ymin) / sim.param.yres); y_flat = 1; }
+			if (sim.param.znum - 1) { z_grid_num = (int)((segv[i].sz - sim.param.zmin) / sim.param.zres); z_flat = 1; }
+
+			if (x_grid_num < 0) { x_grid_num = 0; x_flat = 0; }
+			else if (x_grid_num >= (sim.param.xnum - 1)) { x_grid_num = sim.param.xnum - 1; x_flat = 0; }
+			if (y_grid_num < 0) { y_grid_num = 0; y_flat = 0; }
+			else if (y_grid_num >= (sim.param.ynum - 1)) { y_grid_num = sim.param.ynum - 1; y_flat = 0; }
+			if (z_grid_num < 0) { z_grid_num = 0; z_flat = 0; }
+			else if (z_grid_num >= (sim.param.znum - 1)) { z_grid_num = sim.param.znum - 1; z_flat = 0; }
+
+			vector<int> point_nums;
+			for (int a = 0; a <= z_flat; a++) {
+				for (int b = 0; b <= y_flat; b++) {
+					for (int c = 0; c <= x_flat; c++) {
+						point_num = (z_grid_num + a) + sim.param.znum * (y_grid_num + b) + sim.param.znum * sim.param.ynum * (x_grid_num + c);
+						if (!ptv[point_num].get_T_calc_flag()) {
+							test_pts.push_back(point_num);
+							ptv[point_num].set_T_calc_flag();
+						}
+					}
+				}
+			}
+		}
+
+		if (segv[seg_num[itert_start]].smode == 0) {
+			int_shape_seg current_beam = Util::GetBeamLocShape(itert_start * sim.param.dt, beam.ssegv, sim, sim.util.start_seg);
+			if (sim.param.xnum - 1) { x_grid_num = (int)((current_beam.xb - sim.param.xmin) / sim.param.xres); x_flat = 1; }
+			if (sim.param.ynum - 1) { y_grid_num = (int)((current_beam.yb - sim.param.ymin) / sim.param.yres); y_flat = 1; }
+			if (sim.param.znum - 1) { z_grid_num = (int)((current_beam.zb - sim.param.zmin) / sim.param.zres); z_flat = 1; }
+
+			if (x_grid_num < 0) { x_grid_num = 0; x_flat = 0; }
+			else if (x_grid_num >= (sim.param.xnum - 1)) { x_grid_num = sim.param.xnum - 1; x_flat = 0; }
+			if (y_grid_num < 0) { y_grid_num = 0; y_flat = 0; }
+			else if (y_grid_num >= (sim.param.ynum - 1)) { y_grid_num = sim.param.ynum - 1; y_flat = 0; }
+			if (z_grid_num < 0) { z_grid_num = 0; z_flat = 0; }
+			else if (z_grid_num >= (sim.param.znum - 1)) { z_grid_num = sim.param.znum - 1; z_flat = 0; }
+
+			for (int a = 0; a <= z_flat; a++) {
+				for (int b = 0; b <= y_flat; b++) {
+					for (int c = 0; c <= x_flat; c++) {
+						point_num = (z_grid_num + a) + sim.param.znum * (y_grid_num + b) + sim.param.znum * sim.param.ynum * (x_grid_num + c);
+						if (!ptv[point_num].get_T_calc_flag()) {
+							test_pts.push_back(point_num);
+							ptv[point_num].set_T_calc_flag();
+						}
+					}
+				}
+			}
+		}
+	}
+	return;
+}
+
+void Melt::neighbor_check(vector<int>& test_pts, vector<int>& liq_pts, vector<int>& reset_pts, Point * const ptv, vector<omp_lock_t>& lock, double& t, vector<int_seg>& isegv, Simdat& sim, int surface_only) {
+	vector<int> test_tmp;
 
 	//identify neighbors of liquid points ONLY ON SURFACE
 	#pragma omp parallel num_threads(sim.setting.thnum)
 	{
-		std::vector<int> th_liq_pts;
-		std::vector<int> th_test_tmp;
-		std::vector<int> th_reset_pts;
+		vector<int> th_liq_pts;
+		vector<int> th_test_tmp;
+		vector<int> th_reset_pts;
 		int Tflag = 0;
 		//Find neighbors in test_pts for checking
 		#pragma omp for schedule(dynamic,1+test_pts.size()/sim.setting.thnum/64)
@@ -136,7 +277,7 @@ void Melt::neighbor_check(std::vector<int>& test_pts, std::vector<int>& liq_pts,
 				if (ijkminmax[temp] < 0) { ijkminmax[temp] = 0; }
 			}
 
-			std::vector<int> nbs;
+			vector<int> nbs;
 			int pnum;
 			for (int di = -n + ijkminmax[0]; di <= (n - ijkminmax[1]); di++) {
 				for (int dj = -n + ijkminmax[2]; dj <= (n - ijkminmax[3]); dj++) {
@@ -170,11 +311,11 @@ void Melt::neighbor_check(std::vector<int>& test_pts, std::vector<int>& liq_pts,
 	test_pts = test_tmp;
 }
 
-void Melt::calc_depth(std::vector<int>& depths, std::vector<int>& liq_pts, std::vector<int>& reset_pts, std::vector<Point>& ptv, double& t, std::vector<int_seg>& isegv, std::vector<int_seg>& isegv_last, std::vector<path_seg>& segv, Simdat& sim) {
+void Melt::calc_depth(vector<int>& depths, vector<int>& liq_pts, vector<int>& reset_pts, Point * const ptv, double& t, vector<int_seg>& isegv, vector<int_seg>& isegv_last, vector<path_seg>& segv, Simdat& sim) {
 	if (sim.param.znum == 1) {return;} 
 	#pragma omp parallel num_threads(sim.setting.thnum)
 	{
-		std::vector<int> th_reset_pts;
+		vector<int> th_reset_pts;
 		#pragma omp for schedule(dynamic)
 		for (int it = 0; it < liq_pts.size(); it++) {
 			int i = ptv[liq_pts[it]].get_i();
@@ -187,7 +328,7 @@ void Melt::calc_depth(std::vector<int>& depths, std::vector<int>& liq_pts, std::
 				if (depth == sim.param.znum) { break; }
 				int pnum = Util::ijk_to_p(i, j, sim.param.znum - 1 - depth, sim);
 				th_reset_pts.push_back(pnum);
-				if (ptv[pnum].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) { break; }
+				if (ptv[pnum].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) {break;}
 				else { flag = 0; }
 			}
 			while (true) {
@@ -197,9 +338,18 @@ void Melt::calc_depth(std::vector<int>& depths, std::vector<int>& liq_pts, std::
 				th_reset_pts.push_back(pnum);
 				if (ptv[pnum].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) {
 					if (depth != depths[dnum]) { ptv[pnum].Temp_Calc_Pre_Path(t - sim.param.dt, isegv_last, sim, -1, 0); }
-					ptv[pnum].CalcGo_2(t, segv, sim);
+					ptv[pnum].Solidify(t, segv, sim);
+					// Matt Code
+					/*if (sim.mat.T_liq != sim.mat.T_sol) {
+						ptv[pnum].set_t_last_liq(ptv[pnum].Calc_Time(t, segv, sim, sim.mat.T_liq));
+					}
+					else if (sim.mat.T_liq == sim.mat.T_sol && ptv[pnum].get_t_last_sol() < ptv[pnum].get_t_last_liq()) {
+						ptv[pnum].set_t_last_sol(ptv[pnum].Calc_Time(t, segv, sim, sim.mat.T_liq));
+					}*/
 				}
-				else { break; }
+				else { 
+					break; 
+				}
 			}
 			if (depth == sim.param.znum) { depth--; }
 			depths[dnum] = depth;

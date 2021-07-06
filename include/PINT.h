@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,17 +37,20 @@
 #include "Point.h"
 #include <deque>
 
+using std::vector;
+using std::string;
+
 namespace PINT {
 	// Check if godpoint references a point, if not, make the point
-	void GodCheck(std::deque<Point>&, std::vector<int>&, std::vector<omp_lock_t>&, Simdat&, int);
+	void GodCheck(std::deque<Point>&, vector<int>&, vector<omp_lock_t>&, Simdat&, int);
 	// If the point melted after the recorded time, update it
-	void GodToPtv(std::vector<Point>&, std::vector<int>&, std::deque<Point>&, Simdat&, std::vector<omp_lock_t>&);
+	void GodToPtv(Point * const ptv, vector<int>&, std::deque<Point>&, Simdat&, vector<omp_lock_t>&);
 	// Melt::beam_trace with the addition of godpoints AND always looking at the current time as well
-	void beam_trace(std::vector<int>&, std::vector<int>&, std::deque<Point>&, std::vector<omp_lock_t>& lock, std::vector<path_seg>&, Simdat&, std::vector<int>&, int, int);
+	void beam_trace(vector<int>&, vector<int>&, std::deque<Point>&, vector<omp_lock_t>& lock, vector<path_seg>&, Simdat&, vector<int>&, int, int);
 	// Melt::neighbor_check with the addition of godpoints
-	void neighbor_check(std::vector<int>&, std::vector<int>&, std::vector<int>&, std::vector<int>&, std::deque<Point>&, std::vector<omp_lock_t>&, double&, std::vector<int_seg>&, Simdat&, int, int);
+	void neighbor_check(vector<int>&, vector<int>&, vector<int>&, vector<int>&, std::deque<Point>&, vector<omp_lock_t>&, double&, vector<int_seg>&, Simdat&, int, int);
 	// Melt::calc_depth with the addition of godpoints
-	void calc_depth(std::vector<int>&, std::vector<int>&, std::vector<int>&, std::vector<int>&, std::deque<Point>&, std::vector<omp_lock_t>&, double&, std::vector<int_seg>&, std::vector<int_seg>&, std::vector<path_seg>&, Simdat&, int);
+	void calc_depth(vector<int>&, vector<int>&, vector<int>&, vector<int>&, std::deque<Point>&, vector<omp_lock_t>&, double&, vector<int_seg>&, vector<int_seg>&, vector<path_seg>&, Simdat&, int);
 	// Help fix the scaling power [0,1] to make sure there are no repeat iterations
 	void calcSpeedPow(double&, Simdat&);
 	// Calculate what iteration individual threads should start on

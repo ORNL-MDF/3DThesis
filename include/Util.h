@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,15 +37,19 @@
 #include <omp.h>
 #include "DataStructs.h"
 #include "Point.h"
+
+using std::vector;
+using std::string;
+
 namespace Util {
 	// Turns an integer into a zero-padded string
-	std::string ZeroPadNumber(int);
+	string ZeroPadNumber(int);
 	// Turns ijk indices into global point number
 	int		ijk_to_p(int, int, int, Simdat&);
 	// Creates a point based on ijk indices
 	void	MakePoint(Point&, Simdat&, int);
 	// Initializes the locks. They make sure only one thread can access a point at a time
-	void	SetLocks(std::vector<omp_lock_t>&, Simdat&);
+	void	SetLocks(vector<omp_lock_t>&, Simdat&);
 	// Calculates the maximum radius around the domain to be considered
 	void	CalcRMax (Simdat&);
 	// Checks if it is inside the maximum radius
@@ -53,15 +57,18 @@ namespace Util {
 	// Calculates the time to integrate back to
 	double	t0calc(double, Simdat&);
 	// Creates a vector allowing quicker (than binary search) finding of current path segment
-	void	InitStartSeg(std::vector<int>&, std::vector<path_seg>, Simdat&);
+	void	InitStartSeg(vector<int>&, vector<path_seg>, Simdat&);
 	// Retrieves the initial path segment to look at
-	void	GetStartSeg(Simdat&, std::vector<int>&, int);
+	void	GetStartSeg(Simdat&, vector<int>&, int);
 	// Gets the maximum allowable step size for a path segment
-	double	GetRefTime(double&, std::vector<path_seg>&, Simdat&, int&);
+	double	GetRefTime(double&, vector<path_seg>&, Simdat&, int&);
+	double	GetRefTimeShape(double&, infBeam&, Simdat&, int&);
 	// Finds the current beam location
-	int_seg GetBeamLoc(double, std::vector<path_seg>&, Simdat&, int&);
+	int_seg GetBeamLoc(double, vector<path_seg>&, Simdat&, int&);
+	// Finds the current beam location for Inf Beams
+	int_shape_seg GetBeamLocShape(double, vector<path_shape_seg>&, Simdat&, int&);
 	// Estimates the actual end of the simulation
-	void	EstimateEndTime(Simdat&, std::vector<path_seg>&);
+	void	EstimateEndTime(Simdat&, vector<path_seg>&);
 	// Indicates when all points have solidified and the full scan is over
 	bool	sim_finish(double, Simdat&, int);
 }

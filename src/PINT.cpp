@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -41,11 +41,11 @@
 #include "DataStructs.h"
 #include "Point.h"
 
-void PINT::GodCheck(std::deque<Point>& ptv, std::vector<int>& god_pts, std::vector<omp_lock_t>& lock, Simdat& sim, int point_num) {
+void PINT::GodCheck(std::deque<Point>& ptv, vector<int>& god_pts, vector<omp_lock_t>& lock, Simdat& sim, int point_num) {
 	if (god_pts[point_num] < 0) {
 		Point point;
 		Util::MakePoint(point, sim, point_num);
-		point.Initialize();
+		point.Initialize(sim);
 		omp_set_lock(&(lock[sim.param.pnum]));
 		if (god_pts[point_num] < 0) {
 			ptv.push_back(point);
@@ -56,7 +56,7 @@ void PINT::GodCheck(std::deque<Point>& ptv, std::vector<int>& god_pts, std::vect
 	return;
 }
 
-void PINT::GodToPtv(std::vector<Point>& ptv_master, std::vector<int>& god_pts, std::deque<Point>& ptv, Simdat& sim, std::vector<omp_lock_t>& lock) {
+void PINT::GodToPtv(Point * const ptv_master, vector<int>& god_pts, std::deque<Point>& ptv, Simdat& sim, vector<omp_lock_t>& lock) {
 	for (int p = 0; p < ptv.size(); p++) {
 		if (ptv[p].get_t_last_liq()>0.0) {
 			int p_real = Util::ijk_to_p(ptv[p].get_i(), ptv[p].get_j(), ptv[p].get_k(), sim);
@@ -68,7 +68,7 @@ void PINT::GodToPtv(std::vector<Point>& ptv_master, std::vector<int>& god_pts, s
 	}
 }
 
-void PINT::beam_trace(std::vector<int>& test_pts, std::vector<int>& god_pts, std::deque<Point>& ptv, std::vector<omp_lock_t>& lock, std::vector<path_seg>& segv, Simdat& sim, std::vector<int>& seg_num, int itert_start, int itert_end) {
+void PINT::beam_trace(vector<int>& test_pts, vector<int>& god_pts, std::deque<Point>& ptv, vector<omp_lock_t>& lock, vector<path_seg>& segv, Simdat& sim, vector<int>& seg_num, int itert_start, int itert_end) {
 	int seg_temp_prev, seg_temp_now;
 
 	if (itert_end >= seg_num.size()) { return; }
@@ -93,7 +93,7 @@ void PINT::beam_trace(std::vector<int>& test_pts, std::vector<int>& god_pts, std
 		if (z_grid_num < 0) { z_grid_num = 0; z_flat = 0; }
 		else if (z_grid_num >= (sim.param.znum - 1)) { z_grid_num = sim.param.znum - 1; z_flat = 0; }
 
-		std::vector<int> point_nums;
+		vector<int> point_nums;
 		for (int a = 0; a <= z_flat; a++) {
 			for (int b = 0; b <= y_flat; b++) {
 				for (int c = 0; c <= x_flat; c++) {
@@ -139,15 +139,15 @@ void PINT::beam_trace(std::vector<int>& test_pts, std::vector<int>& god_pts, std
 	return;
 }
 
-void PINT::neighbor_check(std::vector<int>& test_pts, std::vector<int>& liq_pts, std::vector<int>& reset_pts, std::vector<int>& god_pts, std::deque<Point>& ptv, std::vector<omp_lock_t>& lock, double& t, std::vector<int_seg>& isegv, Simdat& sim, int num_free, int surface_only) {
-	std::vector<int> test_tmp;
+void PINT::neighbor_check(vector<int>& test_pts, vector<int>& liq_pts, vector<int>& reset_pts, vector<int>& god_pts, std::deque<Point>& ptv, vector<omp_lock_t>& lock, double& t, vector<int_seg>& isegv, Simdat& sim, int num_free, int surface_only) {
+	vector<int> test_tmp;
 
 	//identify neighbors of liquid points ONLY ON SURFACE
 	#pragma omp parallel num_threads(1+num_free) if(num_free)
 	{
-		std::vector<int> th_liq_pts;
-		std::vector<int> th_test_tmp;
-		std::vector<int> th_reset_pts;
+		vector<int> th_liq_pts;
+		vector<int> th_test_tmp;
+		vector<int> th_reset_pts;
 		int Tflag = 0;
 		#pragma omp for schedule(dynamic,1+test_pts.size()/(1+num_free)/64) 
 		//Find neighbors in test_pts for checking
@@ -170,7 +170,7 @@ void PINT::neighbor_check(std::vector<int>& test_pts, std::vector<int>& liq_pts,
 				if (ijkminmax[temp] < 0) { ijkminmax[temp] = 0; }
 			}
 
-			std::vector<int> nbs;
+			vector<int> nbs;
 			int pnum;
 			for (int di = -n + ijkminmax[0]; di <= (n - ijkminmax[1]); di++) {
 				for (int dj = -n + ijkminmax[2]; dj <= (n - ijkminmax[3]); dj++) {
@@ -206,11 +206,11 @@ void PINT::neighbor_check(std::vector<int>& test_pts, std::vector<int>& liq_pts,
 	test_pts = test_tmp;
 }
 
-void PINT::calc_depth(std::vector<int>& depths, std::vector<int>& liq_pts, std::vector<int>& reset_pts, std::vector<int>& god_pts, std::deque<Point>& ptv, std::vector<omp_lock_t>& lock, double& t, std::vector<int_seg>& isegv, std::vector<int_seg>& isegv_last, std::vector<path_seg>& segv, Simdat& sim, int num_free) {
+void PINT::calc_depth(vector<int>& depths, vector<int>& liq_pts, vector<int>& reset_pts, vector<int>& god_pts, std::deque<Point>& ptv, vector<omp_lock_t>& lock, double& t, vector<int_seg>& isegv, vector<int_seg>& isegv_last, vector<path_seg>& segv, Simdat& sim, int num_free) {
 	if (sim.param.znum == 1) { return; }
 	#pragma omp parallel num_threads(1+num_free) if(num_free)
 	{
-		std::vector<int> th_reset_pts;
+		vector<int> th_reset_pts;
 		#pragma omp for schedule(dynamic)
 		for (int it = 0; it < liq_pts.size(); it++) {
 			int i = ptv[god_pts[liq_pts[it]]].get_i();
@@ -236,7 +236,7 @@ void PINT::calc_depth(std::vector<int>& depths, std::vector<int>& liq_pts, std::
 				if (ptv[god_pts[pnum]].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) < sim.mat.T_liq) {
 					ptv[god_pts[pnum]].set_output_flag(1);
 					if (depth != depths[dnum]) { ptv[god_pts[pnum]].Temp_Calc_Pre_Path(t - sim.param.dt, isegv_last, sim, -1, 0); }
-					ptv[god_pts[pnum]].CalcGo_2(t, segv, sim);
+					ptv[god_pts[pnum]].Solidify(t, segv, sim);
 				}
 				else { break; }
 			}

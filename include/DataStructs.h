@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,16 +36,19 @@
 #include <string>
 #include <vector>
 
+using std::vector;
+using std::string;
+
 struct int_seg{
 	double xb, yb, zb, taui, dtau, qmod;
 };
 
 struct path_seg{
-	int smode;
-	double sx, sy, sz;	//Segment start coordinates
-	double sqmod;		//Segmod power modulation
-	double sparam;
-	double seg_time;
+	int smode;			//Segment mode (line melt | spot melt)
+	double sx, sy, sz;	//Segment end coordinates
+	double sqmod;		//Segment power modulation
+	double sparam;		//Segment time parameter (speed | spot time )
+	double seg_time;	//Segment end time
 };
 
 struct parBeam
@@ -53,10 +56,38 @@ struct parBeam
 	double Xr, Yr, Pmod;
 };
 
+struct path_shape_seg {
+	int smode;			//Segment mode (line melt | spot melt)
+	double sx, sy, sz;	//Segment end coordinates
+	double sqmod;		//Segment power modulation
+	double sparam;		//Segment time parameter (speed | spot time )
+	double seg_time;	//Segment end time
+
+	double ax, ay, az;	//Segment beam diameter
+};
+
+struct int_shape_seg {
+	double xb, yb, zb, taui, dtau, qmod, ax, ay, az;
+};
+
+struct infBeam
+{
+	double eff, q;
+	double scanEndTime, nond_dt, min_axy, min_a;
+	int	shapeMod;
+	vector<path_shape_seg> ssegv;
+	vector<int_shape_seg> issegv;
+};
+
+struct coord
+{
+	double x, y, z;
+};
+
 struct FileNames {
-	std::string name, mat, beam, path;
-	std::string domain, settings;
-	std::string	parBeams;
+	string	name, mat, beam, path;
+	string	domain, settings;
+	string	points, parBeams, infBeams;
 };
 
 struct Material {
@@ -89,10 +120,14 @@ struct Settings {
 	int neighborhood;
 
 	int out_mode;
+	int T_hist;
 
 	int compress;
 	int use_BCs;
+
+	int customPoints;
 	int parBeams;
+	int infBeams;
 };
 
 struct Utility {
@@ -112,5 +147,7 @@ struct Simdat{
 	Settings	setting;
 	Utility		util;
 
-	std::vector<parBeam> beams;
+	vector<coord> points;
+	vector<parBeam> parBeams;
+	vector<infBeam> infBeams;
 };

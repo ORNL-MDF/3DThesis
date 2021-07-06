@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,9 +33,9 @@
 */
 
 #include <vector>
+#include <cmath>
 #include <ctime>
 #include <iostream>
-#include <cmath>
 
 #include "DataStructs.h"
 #include "Point.h"
@@ -44,25 +44,28 @@
 #include "Run.h"
 #include "Out.h"
 
+using std::vector;
+using std::string;
+
 int main(int argc, char * argv[]) {	
 	
 	int start_s = clock();
 	
 	//Command line input to program is the file that contains the simulation file names
-	std::string	input;
+	string	input;
 	if (argc <= 1) { input = "TestInputs/ParamInput.txt"; }
 	else { input = argv[1]; }	
 
 	Simdat sim;
-	std::vector<Point> ptv;
-	std::vector<path_seg> segv;
-
 	Init::GetFileNames(sim,input);	//Get names of intput files
+
+	vector<path_seg> segv;
 	Init::ReadSimParams(segv, sim);		//Read simulation parameters from input files
-	
+
+	Point* const ptv = new Point[sim.param.pnum];
 	Init::SetPoints(ptv,sim);		//Set up points
 
-	std::vector<int> seg_num;
+	vector<int> seg_num;
 	Util::InitStartSeg(seg_num, segv, sim); 	// Better Search Algorythm Setup
 
 	Run::Simulate(ptv, segv, sim, seg_num);
@@ -72,6 +75,8 @@ int main(int argc, char * argv[]) {
 	
 	if (sim.param.mode){ Out::Write_csv(ptv, sim, "Final", sim.setting.out_mode); }
 	else { Out::Write_csv(ptv, sim, "Snapshot", 0); }
+
+	if (sim.setting.T_hist) { Out::Write_T_hist(ptv, sim, "TemperatureHistory"); }
 	//system("pause");
 
 	return 0;

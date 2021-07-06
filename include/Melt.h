@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,11 +36,18 @@
 #include "DataStructs.h"
 #include "Point.h"
 
+using std::vector;
+using std::string;
+
 namespace Melt {
 	// Adds relevant points to check if they are melted or not based on the beam path
-	void beam_trace(std::vector<int>&, std::vector<Point>&, std::vector<path_seg>&, Simdat&, std::vector<int>&, int, int);
+	void beam_trace(vector<int>&, Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&, int, int);
+	// Adds relevant points to check if they are melted or not based on the beam path (for Parallel Beams)
+	void beam_trace_parBeams(vector<int>&, Point* const ptv, vector<path_seg>&, Simdat&, vector<int>&, int, int);
+	// Adds relevant points to check if they are melted or not based on the beam path (for Infinite Beams)
+	void beam_trace_infBeams(vector<int>&, Point* const ptv, vector<path_seg>&, Simdat&, vector<int>&, int, int);
 	// Checks the neigbors of points to see if they are melted too
-	void neighbor_check(std::vector<int>&, std::vector<int>& , std::vector<int>& , std::vector<Point>&, std::vector<omp_lock_t>&, double&, std::vector<int_seg>&, Simdat&, int);
+	void neighbor_check(vector<int>&, vector<int>& , vector<int>& , Point * const ptv, vector<omp_lock_t>&, double&, vector<int_seg>&, Simdat&, int);
 	// Calculate the depth of a melt at a specific x,y coordinate. Only used in mode_3.
-	void calc_depth(std::vector<int>&, std::vector<int>&, std::vector<int>&, std::vector<Point>&, double&, std::vector<int_seg>&, std::vector<int_seg>&, std::vector<path_seg>&, Simdat&);
+	void calc_depth(vector<int>&, vector<int>&, vector<int>&, Point * const ptv, double&, vector<int_seg>&, vector<int_seg>&, vector<path_seg>&, Simdat&);
 }

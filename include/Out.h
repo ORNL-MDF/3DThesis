@@ -5,7 +5,7 @@
 *
 * All Rights Reserved
 *
-* Authors: Benjamin Stump <stumpbc@ornl.gov>, Alex Plotkowski, James Ferguson, Kevin Sisco
+* Authors: Benjamin Stump <stumpbc@ornl.gov> and Alex Plotkowski
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,12 +37,17 @@
 #include "Point.h"
 #include <deque>
 
+using std::vector;
+using std::string;
+
 namespace Out {
 	// Writes the progress to the console
 	void Progress(Simdat&, int);
 	// Writes the progress of points to the console
 	void Point_Progress(Simdat&, int);
 	// Writes a csv contiaing Point data
-	void Write_csv(std::vector<Point>&, Simdat&, std::string, int);
-	void Write_csv_PINT(std::deque<Point>&, Simdat&, std::string, int);
+	void Write_csv(Point * const ptv, Simdat&, string, int);
+	void Write_csv_PINT(std::deque<Point>&, Simdat&, string, int);
+	// Writes a csv containing Tmperature history data for the points
+	void Write_T_hist(Point * const ptv, Simdat&, string);
 }
