@@ -2,7 +2,7 @@ Shape
 {
 	Width_X		10.0e-6
 	Width_Y		10.0e-6
-	Depth_Z		1.0e-6
+	Depth_Z		10.0e-6
 }
 Intensity
 {

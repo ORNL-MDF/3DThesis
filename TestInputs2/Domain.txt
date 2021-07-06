@@ -1,12 +1,18 @@
 X
 {
-	Res	25e-6
+	Min	-0.001
+	Max	0.006
+	Res	25.0e-6
 }
 Y
 {
-	Res	25e-6
+	Min	-0.001
+	Max	0.002
+	Res	25.0e-6
 }
 Z
 {
+	Min	-0.001
+	Max	0.000
 	Num	1
 }

@@ -6,3 +6,9 @@ Constants
 	c	600.0
 	p	7451.0
 }
+CET
+{
+	N0	3e13
+	n	3
+	a	1.25e6
+}

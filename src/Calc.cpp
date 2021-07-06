@@ -87,14 +87,6 @@ void Calc::Integrate_thread(vector<int_seg>& isegv, vector<path_seg>& segv, Simd
 	if (sim.setting.parBeams) { Calc::UseParBeams(isegv, sim); }
 	if (sim.setting.use_BCs) { Calc::AddBCs(isegv, sim); }
 
-	const int org_size = isegv.size();
-	for (int i = 0; i < org_size; i++) {
-		int_seg tmp = isegv[i];
-		tmp.zb = -80e-6; isegv.push_back(tmp);	
-		tmp.zb = 80e-6; isegv.push_back(tmp);
-		tmp.zb = -160e-6; isegv.push_back(tmp);
-	}
-
 	return;
 }
 

@@ -2,9 +2,9 @@ Simulation
 {
 	TimeStep	1.0e-4
 	Mode		3
-	MaxThreads	8	
+	MaxThreads	8
 }
 Output
 {
-	Mode		1
+	Mode		2
 }
