@@ -34,50 +34,81 @@
 
 #include <vector>
 #include <cmath>
-#include <ctime>
+#include <chrono>
 #include <iostream>
 
 #include "DataStructs.h"
-#include "Point.h"
 #include "Init.h"
 #include "Util.h"
 #include "Run.h"
 #include "Out.h"
 
+#include "Grid.h"
+
 using std::vector;
 using std::string;
 
+using std::chrono::high_resolution_clock;
+using std::chrono::duration;
+
 int main(int argc, char * argv[]) {	
-	
-	int start_s = clock();
-	
+
+	// Start initialization clock
+	auto start_in = high_resolution_clock::now();
+
 	//Command line input to program is the file that contains the simulation file names
-	string	input;
-	if (argc <= 1) { input = "TestInputs/ParamInput.txt"; }
-	else { input = argv[1]; }	
+	string	inputFile;
+	if (argc <= 1) { inputFile = "TestInputs/ParamInput.txt"; }
+	else { inputFile = argv[1]; }
 
+	// Initialize struct for simulation parameters
 	Simdat sim;
-	Init::GetFileNames(sim,input);	//Get names of intput files
 
-	vector<path_seg> segv;
-	Init::ReadSimParams(segv, sim);		//Read simulation parameters from input files
-
-	Point* const ptv = new Point[sim.param.pnum];
-	Init::SetPoints(ptv,sim);		//Set up points
-
-	vector<int> seg_num;
-	Util::InitStartSeg(seg_num, segv, sim); 	// Better Search Algorythm Setup
-
-	Run::Simulate(ptv, segv, sim, seg_num);
-
-	int stop_s = clock();
-	std::cout << "Execution time (s): " << (stop_s - start_s) / double(CLOCKS_PER_SEC) << "\n\n";
+	// Get names of intput files
+	Init::GetFileNames(sim.files, inputFile);	
 	
-	if (sim.param.mode){ Out::Write_csv(ptv, sim, "Final", sim.setting.out_mode); }
-	else { Out::Write_csv(ptv, sim, "Snapshot", 0); }
+	// Read input files and set simulation parameters
+	Init::ReadSimParams(sim);
 
-	if (sim.setting.T_hist) { Out::Write_T_hist(ptv, sim, "TemperatureHistory"); }
-	//system("pause");
+	// Initialize grid
+	Grid grid(sim); 
+
+	//// MISC INIT STUFF ////
+	//if (sim.settings.use_PINT) { Util::EstimateEndTime(sim, segv); }
+	//else { sim.util.approxEndTime = sim.util.scanEndTime; }
+	sim.util.approxEndTime = sim.util.allScansEndTime;
+	////////////////////////
+
+	// Output initialization time
+	auto stop_in = high_resolution_clock::now();
+	std::cout << "Initialization time (s): " << (duration<double, std::milli>(stop_in - start_in).count())/1000.0 << "\n\n"; //(stop_in - start_in) / double(CLOCKS_PER_SEC) << "\n\n";
+
+	// Start simulation clock
+	auto start_sim = high_resolution_clock::now();
+
+	// Run the simulation
+	Run::Simulate(grid, sim);
+
+	// Output simulation time
+	auto stop_sim = high_resolution_clock::now();
+	std::cout << "Execution time (s): " << (duration<double, std::milli>(stop_sim - start_sim).count())/1000.0 << "\n\n";//(stop_sim - start_sim) / double(CLOCKS_PER_SEC) << "\n\n";
+
+	// Start output clock
+	auto start_out = high_resolution_clock::now();
+
+	if (sim.param.mode=="Solidification"){ grid.Output(sim, "Solidification.Final"); }
+	grid.Output_T_hist(sim, "T.hist");
+	grid.Output_RDF(sim, "RDF.Final");
+
+	// Output output time
+	auto stop_out = high_resolution_clock::now();
+	std::cout << "Output time (s): " << (duration<double, std::milli>(stop_out - start_out).count()) / 1000.0 << "\n\n";
+
+	//if (sim.param.mode){ Out::Write_csv(grid, sim, "Final", sim.settings.out_mode); }
+	//else { Out::Write_csv(grid, sim, "Snapshot", 0); }
+
+	//if (sim.settings.T_hist) { Out::Write_T_hist(grid, sim, "TemperatureHistory"); }
+	system("pause");
 
 	return 0;
 }

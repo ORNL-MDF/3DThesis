@@ -5,7 +5,7 @@ BUILD    := ./build
 OBJ_DIR  := $(BUILD)/objects
 APP_DIR  := $(BUILD)/application
 
-CXXFLAGS := -fopenmp -O2
+CXXFLAGS := -fopenmp -Ofast
 INCLUDE  := -Iinclude/
 
 SRC      := $(wildcard src/*.cpp)

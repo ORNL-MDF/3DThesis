@@ -2,13 +2,13 @@ X
 {
 	Min	-0.001
 	Max	0.006
-	Res	25.0e-6
+	Res	2.5e-5
 }
 Y
 {
 	Min	-0.001
 	Max	0.002
-	Res	25.0e-6
+	Res	2.5e-5
 }
 Z
 {

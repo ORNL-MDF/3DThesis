@@ -1,0 +1,31 @@
+Grid
+{
+	x	1
+	y	1
+	z	1
+}
+Temperature
+{
+	T	1
+	T_hist	0
+}
+Solidification
+{
+	tSol	0
+	G	0
+	Gx	0
+	Gy	0
+	Gz	0
+	V	0
+	dTdt	0
+	eqFrac	0
+	RDF	0
+	numMelt	0
+}
+Solidification+
+{
+	H	0
+	Hx	0
+	Hy	0
+	Hz	0
+}

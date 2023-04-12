@@ -34,7 +34,8 @@
 
 #pragma once
 #include "DataStructs.h"
-#include "Point.h"
+#include "Grid.h"
+
 #include <deque>
 
 using std::vector;
@@ -42,12 +43,15 @@ using std::string;
 
 namespace Out {
 	// Writes the progress to the console
-	void Progress(Simdat&, int);
+	void Progress(const Simdat&, const int);
 	// Writes the progress of points to the console
-	void Point_Progress(Simdat&, int);
+	void Point_Progress(const Simdat&, const int);
 	// Writes a csv contiaing Point data
-	void Write_csv(Point * const ptv, Simdat&, string, int);
-	void Write_csv_PINT(std::deque<Point>&, Simdat&, string, int);
-	// Writes a csv containing Tmperature history data for the points
-	void Write_T_hist(Point * const ptv, Simdat&, string);
+	void Write_csv_temp(Grid&, const Simdat&, const string);
+	//void Write_csv_temp_v2(Grid&, const Simdat&, const string);
+	void Write_csv(Grid&, const Simdat&, const string);
+	//// Writes a csv containing Tmperature history data for the points
+	//void Write_T_hist(Grid&, Simdat&, string);
+	//// For reduced data format
+	//void Write_Reduced(Grid& grid, Simdat&, string);
 }

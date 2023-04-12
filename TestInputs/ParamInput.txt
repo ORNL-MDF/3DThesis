@@ -1,6 +1,7 @@
 Simulation
 {
 	Name		TestSim
+	Mode		TestInputs/Mode.txt
 	Material	TestInputs/IN718.txt
 	Beam		TestInputs/Beam.txt
 	Path		TestInputs/Path.txt
@@ -8,5 +9,6 @@ Simulation
 Options
 {
 	Domain		TestInputs/Domain.txt
+	Output		TestInputs/Output.txt
 	Settings	TestInputs/Settings.txt
 }

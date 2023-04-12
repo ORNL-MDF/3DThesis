@@ -40,19 +40,16 @@ using std::vector;
 using std::string;
 
 namespace Calc {
-	// Chooses the mode of integrations. Only compares methods if it's not for a single point solidifying
-	void Integrate(vector<int_seg>&, vector<vector<int_seg>>&, vector<path_seg>&, Simdat&, vector<int>&, int, double, int, int);
-	void Integrate_thread(vector<int_seg>&,vector<path_seg>&, Simdat&, double, int);
+	// Get quadrature nodes and points for several subsequent timesteps in parallel
+	void Integrate_Parallel(Nodes&, const Simdat&, const double, const bool);
+	// Get quadrature nodes and points for one time
+	void Integrate_Serial(Nodes&, const Simdat&, const double, const bool);
 
 	// Adaptive Integration Scheme
-	void GaussIntegrate(vector<int_seg>&, vector<path_seg>&, Simdat&, double, int);
+	void GaussIntegrate(Nodes&, const Simdat&, const double, const bool);
 	// Adaptive Integration Scheme with a compression scheme between neighboring path segments. Very usefull for point rasters.
-	void GaussCompressIntegrate(vector<int_seg>&, vector<path_seg>&, Simdat&, double, int);
-	// Adaptive Integration Scheme for use with multiple independent beams
-	void GaussIntegrateInfBeams(vector<infBeam>&, Simdat&, double, int);
+	void GaussCompressIntegrate(Nodes&, const Simdat&, const double, const bool);
 
 	// Adds Simple boundary conditions (x and y) via method of images
-	void AddBCs(vector<int_seg>&, Simdat&);
-	
-	void UseParBeams(vector<int_seg>&, Simdat&);
+	void AddBCs(Nodes&, const Domain&);
 }

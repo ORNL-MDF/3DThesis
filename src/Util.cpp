@@ -42,337 +42,201 @@
 #include "Util.h"
 #include "Calc.h"
 #include "DataStructs.h"
-#include "Point.h"
 
-string Util::ZeroPadNumber(int num)
+string Util::ZeroPadNumber(const int num)
+{
+	return ZeroPadNumber(num, 7);
+}
+
+string Util::ZeroPadNumber(const int num, const int width)
 {
 	std::ostringstream ss;
-	ss << std::setw(7) << std::setfill('0') << num;
+	ss << std::setw(width) << std::setfill('0') << num;
 	return ss.str();
 }
 
-int		Util::ijk_to_p(int i, int j, int k, Simdat& sim) {
-	return i * (sim.param.znum * sim.param.ynum) + j * sim.param.znum + k;
+int		Util::ijk_to_p(const int i, const int j, const int k, const Simdat& sim) {
+	return i * (sim.domain.znum * sim.domain.ynum) + j * sim.domain.znum + k;
 }
 
-void	Util::MakePoint(Point& point, Simdat& sim, int p) {
-	//Get i,j,k from p
-	double xp, yp, zp;
-	int i, j, k;
-
-	k = p % sim.param.znum;
-	p = (p - k) / sim.param.znum;
-	j = p % sim.param.ynum;
-	p = (p - j) / sim.param.ynum;
-	i = p;
-
-	if (sim.param.xnum == 1) { xp = sim.param.xmax; }
-	else { xp = sim.param.xmin + ((float)i * ((sim.param.xmax - sim.param.xmin) / ((float)sim.param.xnum - 1))); }
-
-	if (sim.param.ynum == 1) { yp = sim.param.ymax; }
-	else { yp = sim.param.ymin + ((float)j * ((sim.param.ymax - sim.param.ymin) / ((float)sim.param.ynum - 1))); }
-
-	if (sim.param.znum == 1) { zp = sim.param.zmax; }
-	else { zp = sim.param.zmin + ((float)k * ((sim.param.zmax - sim.param.zmin) / ((float)sim.param.znum - 1))); }
-
-	point.set_i(i);
-	point.set_j(j);
-	point.set_k(k);
-	point.set_xloc(xp);
-	point.set_yloc(yp);
-	point.set_zloc(zp);
-}
-
-void	Util::SetLocks(vector<omp_lock_t>& lock, Simdat& sim) {
+void	Util::SetLocks(vector<omp_lock_t>& lock, const Simdat& sim) {
 	for (int p = 0; p < lock.size(); p++) { omp_init_lock(&(lock[p])); }
 	return;
 }
 
-void	Util::CalcRMax (Simdat& sim){
-	sim.setting.t_hist = 1.0 / sim.setting.t_hist;
-	if (sim.setting.r_max<0.0) {
-		//If the temperature never gets to 1/t_hist the peak temperature
-		if (sim.setting.t_hist < exp(3.0 / 2.0)) { sim.setting.r_max = sim.beam.ax*sqrt(log(sim.setting.t_hist) / 3.0); } 
-		else { sim.setting.r_max = sim.beam.ax*pow(sim.setting.t_hist, (1.0 / 3.0)) / sqrt(2.0*exp(1.0)); }
-		//If the power never gets to x (K/s)
-		double beta = pow(3 / 3.14159, 1.5) * sim.beam.q / (sim.mat.rho * sim.mat.cps); 
-		double temp_diff = sim.mat.T_liq - sim.mat.Tinit;
-		double x = temp_diff * sim.setting.p_hist;
-		double r_max_2;
-		if (beta / (x*sim.beam.ax*sim.beam.ax*sim.beam.ax) < exp(3.0 / 2.0)) { r_max_2 = sim.beam.ax*sqrt(log(beta / (x*sim.beam.ax*sim.beam.ax*sim.beam.ax)) / 3.0); }
-		else { r_max_2 = pow(beta / x, (1.0 / 3.0)) / sqrt(2.0*exp(1.0)); }
+void	Util::AddToNodes(Nodes& nodes, const int_seg seg) {
+	nodes.size++;
+	nodes.xb.push_back(seg.xb);
+	nodes.yb.push_back(seg.yb);
+	nodes.zb.push_back(seg.zb);
+	nodes.phix.push_back(seg.phix);
+	nodes.phiy.push_back(seg.phiy);
+	nodes.phiz.push_back(seg.phiz);
+	nodes.dtau.push_back(seg.dtau);
+	nodes.qmod.push_back(seg.qmod);
+}
 
-		//Choose the greater of the two
-		sim.setting.r_max = fmax(sim.setting.r_max, r_max_2);
-		//sim.r_max = sim.ax*pow(sim.t_hist, (1.0 / 3.0)) / sqrt(2.0*exp(1.0)); 
+void	Util::CombineNodes(Nodes& nodes, const Nodes& nodes2) {
+	nodes.size += nodes2.size;
+	nodes.xb.insert(nodes.xb.end(), nodes2.xb.begin(), nodes2.xb.end());
+	nodes.yb.insert(nodes.yb.end(), nodes2.yb.begin(), nodes2.yb.end());
+	nodes.zb.insert(nodes.zb.end(), nodes2.zb.begin(), nodes2.zb.end());
+	nodes.phix.insert(nodes.phix.end(), nodes2.phix.begin(), nodes2.phix.end());
+	nodes.phiy.insert(nodes.phiy.end(), nodes2.phiy.begin(), nodes2.phiy.end());
+	nodes.phiz.insert(nodes.phix.end(), nodes2.phiz.begin(), nodes2.phiz.end());
+	nodes.dtau.insert(nodes.dtau.end(), nodes2.dtau.begin(), nodes2.dtau.end());
+	nodes.qmod.insert(nodes.qmod.end(), nodes2.qmod.begin(), nodes2.qmod.end());
+}
+
+void	Util::ClearNodes(Nodes& nodes) {
+	nodes.size = 0;
+	nodes.xb.clear();
+	nodes.yb.clear();
+	nodes.zb.clear();
+	nodes.phix.clear();
+	nodes.phiy.clear();
+	nodes.phiz.clear();
+	nodes.dtau.clear();
+	nodes.qmod.clear();
+}
+
+void	Util::Calc_AllScansEndTime(Simdat& sim) {
+	for (const vector<path_seg>& path : sim.paths) {
+		sim.util.allScansEndTime = max(sim.util.allScansEndTime, path.back().seg_time);
+	}
+}
+
+void	Util::Calc_ScanBounds(Domain& domain, const vector<vector<path_seg>>& paths) {
+	double xmin = DBL_MAX;
+	double xmax = -DBL_MAX;
+	double ymin = DBL_MAX;
+	double ymax = -DBL_MAX;
+	double zmin = DBL_MAX;
+	double zmax = -DBL_MAX;
+
+	for (const vector<path_seg>& path : paths) {
+		for (const path_seg& seg : path) {
+			if (seg.sqmod > 0) {
+				if (seg.sx < xmin) { xmin = seg.sx; }
+				if (seg.sx > xmax) { xmax = seg.sx; }
+				if (seg.sy < ymin) { ymin = seg.sy; }
+				if (seg.sy > ymax) { ymax = seg.sy; }
+				if (seg.sz < zmin) { zmin = seg.sz; }
+				if (seg.sz > zmax) { zmax = seg.sz; }
+			}
+		}
+	}
+
+	if (domain.xmin == -DBL_MAX) { domain.xmin = xmin - 500e-6; }
+	if (domain.xmax == DBL_MAX) { domain.xmax = xmax + 500e-6; }
+	if (domain.ymin == -DBL_MAX) { domain.ymin = ymin - 500e-6; }
+	if (domain.ymax == DBL_MAX) { domain.ymax = ymax + 500e-6; }
+	if (domain.zmin == -DBL_MAX) { domain.zmin = zmin - 250e-6; }
+	if (domain.zmax == DBL_MAX) { domain.zmax = zmax; }
+
+}
+
+void	Util::Calc_NonD_dt(vector<Beam>& beams, const Material& material) {
+	for (Beam& beam : beams) {
+		beam.nond_dt = beam.ax * beam.ax / material.a;
 	}
 	return;
 }
 
-bool	Util::InRMax(double x, double y, Simdat& sim) {
-	if ((x > (sim.param.xmax + sim.setting.r_max)) || (x < (sim.param.xmin - sim.setting.r_max))) {return false;}
-	else if ((y >(sim.param.ymax + sim.setting.r_max)) || (y < (sim.param.ymin - sim.setting.r_max))) {return false; }
+void	Util::Calc_RMax (Simdat& sim){
+	sim.settings.t_hist = 1.0 / sim.settings.t_hist;
+	if (sim.settings.r_max<0.0) {
+		for (const Beam& beam : sim.beams) {
+			//If the temperature never gets to 1/t_hist the peak temperature
+			if (sim.settings.t_hist < exp(3.0 / 2.0)) { sim.settings.r_max = beam.ax * sqrt(log(sim.settings.t_hist) / 3.0); }
+			else { sim.settings.r_max = beam.ax * pow(sim.settings.t_hist, (1.0 / 3.0)) / sqrt(2.0 * exp(1.0)); }
+			//If the power never gets to x (K/s)
+			double beta = pow(3.0 / 3.14159, 1.5) * beam.q / (sim.material.rho * sim.material.cps);
+			double temp_diff = sim.material.T_liq - sim.material.T_init;
+			double x = temp_diff * sim.settings.p_hist;
+			double r_max_2;
+			if (beta / (x * beam.ax * beam.ax * beam.ax) < exp(3.0 / 2.0)) { r_max_2 = beam.ax * sqrt(log(beta / (x * beam.ax * beam.ax * beam.ax)) / 3.0); }
+			else { r_max_2 = pow(beta / x, (1.0 / 3.0)) / sqrt(2.0 * exp(1.0)); }
+
+			//Choose the greater of the two
+			sim.settings.r_max = max(sim.settings.r_max, r_max_2);
+			//sim.r_max = sim.ax*pow(sim.t_hist, (1.0 / 3.0)) / sqrt(2.0*exp(1.0)); 
+		}
+	}
+	return;
+}
+
+bool	Util::InRMax(const double x, const double y, const Domain& domain, const Settings& settings) {
+	if ((x > (domain.xmax + settings.r_max)) || (x < (domain.xmin - settings.r_max))) {return false;}
+	else if ((y >(domain.ymax + settings.r_max)) || (y < (domain.ymin - settings.r_max))) {return false; }
 	else {return true;}
 }
 
-void	Util::InitStartSeg(vector<int>& seg_num, vector<path_seg> segv, Simdat& sim) {
-	double f_time = sim.util.scanEndTime;
-	int seg_n = 0;
-	double a = 0.0;
-	while (a <= f_time) {
-		while (segv[seg_n].seg_time<a) { // Toleratnce of 1ns
-			seg_n++;
-		}
-		seg_num.push_back(seg_n);
-		a += sim.param.dt;
-	}
-	seg_num.push_back(segv.size() - 1);
-	return;
-}
-
-void	Util::GetStartSeg(Simdat& sim,vector<int>& seg_num, int itert) {
-	if (itert < seg_num.size()) { sim.util.start_seg = seg_num[itert]; }
-	else { sim.util.start_seg = seg_num[seg_num.size() - 1]; }
-	if (!sim.util.start_seg) { sim.util.start_seg = 1; }
-	return;
-}
-
-double	Util::t0calc(double t, Simdat& sim) {
+double	Util::t0calc(const double t, const Beam& beam, const Material& material, const Settings& settings) {
 	//Time for beam peak to decay to a fraction (t_hist) of it's initial power
-	double t_hist_t = sim.util.nond_dt / 12.0*(pow(sim.setting.t_hist, (2.0 / 3.0)) - 1); 
+	const double t_hist_t = beam.nond_dt / 12.0*(pow(settings.t_hist, (2.0 / 3.0)) - 1); 
 
 	//Time for beam to never exert more than a fraction (p_hist) of the difference between the preheat and solidus temperature
-	double beta = pow(3 / 3.14159, 1.5) * sim.beam.q / (sim.mat.rho * sim.mat.cps);
-	double temp_diff = sim.mat.T_liq - sim.mat.Tinit;
-	double x = temp_diff * sim.setting.p_hist;
-	double y = 432.0*t*(x*x)*(sim.mat.a*sim.mat.a*sim.mat.a) / (beta*beta);
-	double p_hist_t = t / ((1.0 + sqrt(y))*(1.0 + sqrt(y)));  
+	const double beta = pow(3 / 3.14159, 1.5) * beam.q / (material.rho * material.cps);
+	const double temp_diff = material.T_liq - material.T_init;
+	const double x = temp_diff * settings.p_hist;
+	const double y = 432.0*t*(x*x)*(material.a*material.a*material.a) / (beta*beta);
+	const double p_hist_t = t / ((1.0 + sqrt(y))*(1.0 + sqrt(y)));  
 
-	double t0 = t - fmax(t_hist_t, p_hist_t);
+	double t0 = t - max(t_hist_t, p_hist_t);
 	if (t0 < 0.0) { t0 = 0.0; }
 	t0 = 0.0;
 
 	return t0;
 }
 
-double	Util::GetRefTime(double& spp, vector<path_seg>& segv, Simdat& sim, int& seg) {
+double	Util::GetRefTime(const double tpp, const int seg, const vector<path_seg>& path, const Beam& beam) {
 	
-	if (spp < 0) { spp = 0; }
-
-	double ref_t, dt_cur;
-
-	dt_cur = segv[seg].seg_time - segv[seg - 1].seg_time;
-
-	if (segv[seg].smode) {	//Sets maximum time for spot mode (equal to spot time)
-		ref_t = dt_cur;
+	double ref_t;
+	const double spp = max(tpp / beam.nond_dt, 0.0);
+	
+	//Sets maximum time for spot mode (equal to spot time)
+	if (path[seg].smode) {
+		ref_t = path[seg].seg_time - path[seg - 1].seg_time;
 		if (ref_t == 0) {ref_t = 1.0e-9;}
 	}
-	else {	//Sets maximum time for line mode (derived from diffusion distance)
-		double t0 = 0.59 *sim.beam.ax / segv[seg].sparam; // sqrt(log(sqrt(2)))~0.59
-		ref_t = t0 * sqrt(12 * spp + 1);
+	//Sets maximum time for line mode (derived from diffusion distance)
+	else {	
+		double t0 = 0.58870501125 * beam.ax / path[seg].sparam; // sqrt(log(sqrt(2)))~0.58870501125
+		ref_t = t0 * sqrt(12.0 * spp + 1.0);
 	}
+
 	return ref_t;
 }
 
-double	Util::GetRefTimeShape(double& spp, infBeam& beam, Simdat& sim, int& seg) {
+int_seg	Util::GetBeamLoc(const double time, const int seg, const vector<path_seg>& path, const Simdat& sim) {
 
-	if (spp < 0) { spp = 0; }
-
-	double ref_t, dt_cur;
-
-	dt_cur = beam.ssegv[seg].seg_time - beam.ssegv[seg - 1].seg_time;
-
-	if (beam.ssegv[seg].smode) {	//Sets maximum time for spot mode (equal to spot time)
-		ref_t = dt_cur;
-		if (ref_t == 0) { ref_t = 1.0e-9; }
-	}
-	else {	//Sets maximum time for line mode (derived from diffusion distance)
-		double t0 = 0.59 * beam.min_axy / beam.ssegv[seg].sparam; // sqrt(log(sqrt(2)))~0.59
-		ref_t = t0 * sqrt(12 * spp + 1);
-	}
-	return ref_t;
-}
-
-int_seg	Util::GetBeamLoc(double time, vector<path_seg>& segv, Simdat& sim, int& ref_seg_start) {
-
-	int ref_seg = ref_seg_start;
-	int flag = 1;
-	double dx, dy, dz, tcur, dt_cur;
 	int_seg current_seg;
-	//int ref_seg = sim.start_seg;
-	int seg = 0;
-
-	//Skips binary search, starts at known segment
-	while (flag && ref_seg) {
-		if (time < segv[ref_seg - 1].seg_time) {
-			ref_seg--;
-		}
-		else {
-			seg = ref_seg;
-			flag = 0;
-		}
-	}
-
-	if (segv[seg].smode) {	//Location calculation for spot mode
-		current_seg.xb = segv[seg].sx;
-		current_seg.yb = segv[seg].sy;
-		current_seg.zb = segv[seg].sz;
+	if (path[seg].smode) {	//Location calculation for spot mode
+		current_seg.xb = path[seg].sx;
+		current_seg.yb = path[seg].sy;
+		current_seg.zb = path[seg].sz;
 	}
 	else {							//Location calculation for line mode
-		dx = segv[seg].sx - segv[seg - 1].sx;
-		dy = segv[seg].sy - segv[seg - 1].sy;
-		dz = segv[seg].sz - segv[seg - 1].sz;
-		tcur = time - segv[seg - 1].seg_time;
-		dt_cur = segv[seg].seg_time - segv[seg - 1].seg_time;
-		current_seg.xb = segv[seg - 1].sx + (tcur / dt_cur)*dx;
-		current_seg.yb = segv[seg - 1].sy + (tcur / dt_cur)*dy;
-		current_seg.zb = segv[seg - 1].sz + (tcur / dt_cur)*dz;
+		const double dx = path[seg].sx - path[seg - 1].sx;
+		const double dy = path[seg].sy - path[seg - 1].sy;
+		const double dz = path[seg].sz - path[seg - 1].sz;
+		const double tcur = time - path[seg - 1].seg_time;
+		const double dt_cur = path[seg].seg_time - path[seg - 1].seg_time;
+		current_seg.xb = path[seg - 1].sx + (tcur / dt_cur)*dx;
+		current_seg.yb = path[seg - 1].sy + (tcur / dt_cur)*dy;
+		current_seg.zb = path[seg - 1].sz + (tcur / dt_cur)*dz;
 	}
 
-	if (Util::InRMax(current_seg.xb,current_seg.yb,sim)){ current_seg.qmod = segv[seg].sqmod; }
+	// If we are sufficiently outside the domain, set power to zero (so it won't be added to integration)
+	if (Util::InRMax(current_seg.xb,current_seg.yb,sim.domain,sim.settings)){ current_seg.qmod = path[seg].sqmod; }
 	else { current_seg.qmod = 0.0; }
 
 	return current_seg;
 }
 
-int_shape_seg	Util::GetBeamLocShape(double time, vector<path_shape_seg>& segv, Simdat& sim, int& ref_seg_start) {
-	int ref_seg = ref_seg_start;
-	int flag = 1;
-	double dx, dy, dz, tcur, dt_cur;
-	double dax, day, daz;
-	int_shape_seg current_seg;
-	//int ref_seg = sim.start_seg;
-	int seg = 0;
-
-	//Skips binary search, starts at known segment
-	while (flag && ref_seg) {
-		if (time < segv[ref_seg - 1].seg_time) {
-			ref_seg--;
-		}
-		else {
-			seg = ref_seg;
-			flag = 0;
-		}
-	}
-
-	if (segv[seg].smode) {	//Location calculation for spot mode
-		current_seg.xb = segv[seg].sx;
-		current_seg.yb = segv[seg].sy;
-		current_seg.zb = segv[seg].sz;
-		current_seg.ax = segv[seg].ax;
-		current_seg.ay = segv[seg].ay;
-		current_seg.az = segv[seg].az;
-	}
-	else {							//Location calculation for line mode
-		dx = segv[seg].sx - segv[seg - 1].sx;
-		dy = segv[seg].sy - segv[seg - 1].sy;
-		dz = segv[seg].sz - segv[seg - 1].sz;
-		tcur = time - segv[seg - 1].seg_time;
-		dt_cur = segv[seg].seg_time - segv[seg - 1].seg_time;
-		current_seg.xb = segv[seg - 1].sx + (tcur / dt_cur) * dx;
-		current_seg.yb = segv[seg - 1].sy + (tcur / dt_cur) * dy;
-		current_seg.zb = segv[seg - 1].sz + (tcur / dt_cur) * dz;
-		dax = segv[seg].ax - segv[seg - 1].ax;
-		day = segv[seg].ay - segv[seg - 1].ay;
-		daz = segv[seg].az - segv[seg - 1].az;
-		current_seg.ax = segv[seg - 1].ax + (tcur / dt_cur) * dax;
-		current_seg.ay = segv[seg - 1].ay + (tcur / dt_cur) * day;
-		current_seg.az = segv[seg - 1].az + (tcur / dt_cur) * daz;
-	}
-
-	if (Util::InRMax(current_seg.xb, current_seg.yb, sim)) { current_seg.qmod = segv[seg].sqmod; }
-	else { current_seg.qmod = 0.0; }
-
-	return current_seg;
-}
-
-void	Util::EstimateEndTime(Simdat& sim, vector<path_seg>& segv) {
-	if (!sim.param.use_PINT) { sim.util.approxEndTime = sim.util.scanEndTime; return; }
-	vector<Point> points;
-	//Add centroid point
-	double sum_tp = 0, sum_xtp = 0, sum_ytp = 0;
-	double x_av, y_av;
-	for (int seg = 1; seg < segv.size(); seg++) {
-		if (segv[seg].sqmod > 0.0) {
-			double dt = segv[seg].seg_time - segv[seg - 1].seg_time;
-			sum_tp += segv[seg].sqmod*dt;
-			if (segv[seg].smode) {
-				sum_xtp += segv[seg].sx*segv[seg].sqmod*dt;
-				sum_ytp += segv[seg].sy*segv[seg].sqmod*dt;
-			}
-			else {
-				sum_xtp += (segv[seg].sx + segv[seg - 1].sx) / 2.0*segv[seg].sqmod*dt;
-				sum_ytp += (segv[seg].sy + segv[seg - 1].sy) / 2.0*segv[seg].sqmod*dt;
-			}
-		}
-	}
-	x_av = sum_xtp / sum_tp;
-	y_av = sum_ytp / sum_tp;
-
-	Point pt_temp;
-	pt_temp.set_xloc(x_av);
-	pt_temp.set_yloc(y_av);
-	pt_temp.set_zloc(0.0);
-	pt_temp.Initialize(sim);
-	points.push_back(pt_temp);
-
-	//Add centroid of last THNUM path segments with power
-	for (int seg = segv.size() - 1; seg > 0; seg--) {
-		if (points.size() == sim.setting.thnum) { break; }
-		if (segv[seg].sqmod > 0.0) {
-			if (segv[seg].smode) {
-				pt_temp.set_xloc(segv[seg].sx);
-				pt_temp.set_yloc(segv[seg].sy);
-			}
-			else {
-				pt_temp.set_xloc((segv[seg].sx + segv[seg - 1].sx) / 2.0);
-				pt_temp.set_yloc((segv[seg].sy + segv[seg - 1].sy) / 2.0);
-			}
-			points.push_back(pt_temp);
-		}
-	}
-
-	//Simulate them
-	sim.util.approxEndTime = sim.util.scanEndTime;
-	int p = 1;
-	int pastEnd = 0;
-	sim.util.start_seg = segv.size() - 1;
-	while (true) {
-		double t = sim.util.approxEndTime + sim.param.dt*pow(2, p);
-		int liq_num = 0;
-
-		//Pre-calculate integration loop information
-		vector<int_seg> isegv;
-		Calc::GaussIntegrate(isegv, segv, sim, t, 0);
-		#pragma omp parallel for num_threads(sim.setting.thnum) schedule(static)
-		for (int pnum = 0; pnum < points.size(); pnum++) {
-			if (points[pnum].Temp_Calc_Pre_Path(t, isegv, sim, 1, 0) >= sim.mat.T_liq) {
-				#pragma omp atomic
-				liq_num++;
-			}
-		}
-		if (!liq_num) { 
-			if (pastEnd) { p--; }
-			else { sim.util.approxEndTime += sim.param.dt*pow(2, p - 1); }
-			pastEnd = 1;
-		}
-		else {
-			sim.util.approxEndTime = t;
-			if (pastEnd) { p--; }
-			else {p++;}
-		}
-		if (!p) {
-			sim.util.approxEndTime += sim.param.dt; // May not be right
-			break;
-		}	
-	}
-	return;
-}
-
-bool	Util::sim_finish(double t, Simdat& sim, int liq_num) {
-	if (t > sim.util.scanEndTime) {
-		if (liq_num) {return false;}
-		else { return true; }
-	}
-	return false;
+bool	Util::sim_finish(const double t, const Simdat& sim, const int liq_num) {
+	bool isDone = false;
+	if (t > sim.util.allScansEndTime && liq_num == 0) {isDone = true;}
+	return isDone;
 }

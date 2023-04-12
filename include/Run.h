@@ -36,31 +36,27 @@
 #include <vector>
 #include <deque>
 #include "DataStructs.h"
-#include "Point.h"
+#include "Grid.h"
 
 using std::vector;
 using std::string;
 
 namespace Run{
 	//Chooses between modes
-	void Simulate(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
+	void Simulate(Grid&, const Simdat&);
 	
-	//Take a Temperature snapshot at end of the path
-	void Mode_0(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
+	//Choose between snapshot modes
+	void Snapshots(Grid&, const Simdat&);
 
-	//Track all points at all times
-	void Mode_1(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
+	//Snapshot modes
+	void Snapshots_NoTracking(Grid&, const Simdat&);
+	void Snapshots_Volume(Grid&, const Simdat&);
 
-	//Track only meltpool at all times
-	void Mode_2(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
-	//Mode_2, parallel in time, godPoints
-	void Mode_2_PINT(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
+	//Choose between solidification modes
+	void Solidify(Grid&, const Simdat&);
 
-	//Track only meltpool perimeter at all times
-	void Mode_3(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
-	//Mode_3, parallel in time
-	void Mode_3_PINT(Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&);
-
-	//Track like 2 surfaces at the same time or something... for Matt's CA code
-	/*void Mode_4(Point* const ptv, vector<path_seg>&, Simdat&, vector<int>&);*/
+	//Solidification Modes
+	void Solidify_NoTracking(Grid&, const Simdat&); 
+	void Solidify_Volume(Grid&, const Simdat&);
+	void Solidify_Surface(Grid&, const Simdat&);
 }

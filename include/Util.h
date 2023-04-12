@@ -34,41 +34,45 @@
 
 #pragma once
 #include <vector>
+#include <algorithm>
 #include <omp.h>
 #include "DataStructs.h"
-#include "Point.h"
 
 using std::vector;
 using std::string;
+using std::max;
 
 namespace Util {
 	// Turns an integer into a zero-padded string
-	string ZeroPadNumber(int);
+	string ZeroPadNumber(const int);
+	string ZeroPadNumber(const int, const int);
 	// Turns ijk indices into global point number
-	int		ijk_to_p(int, int, int, Simdat&);
-	// Creates a point based on ijk indices
-	void	MakePoint(Point&, Simdat&, int);
+	int		ijk_to_p(const int, const int, const int, const Simdat&);
 	// Initializes the locks. They make sure only one thread can access a point at a time
-	void	SetLocks(vector<omp_lock_t>&, Simdat&);
-	// Calculates the maximum radius around the domain to be considered
-	void	CalcRMax (Simdat&);
+	void	SetLocks(vector<omp_lock_t>&, const Simdat&);
+	// Function to easily add integration segment to nodes
+	void	AddToNodes(Nodes&, const int_seg);
+	// Function to combine nodes
+	void	CombineNodes(Nodes&, const Nodes&);
+	// Function to cleat all nodes
+	void	ClearNodes(Nodes&);
 	// Checks if it is inside the maximum radius
-	bool	InRMax(double, double, Simdat&);
+	bool	InRMax(const double, const double, const Domain&, const Settings&);
 	// Calculates the time to integrate back to
-	double	t0calc(double, Simdat&);
-	// Creates a vector allowing quicker (than binary search) finding of current path segment
-	void	InitStartSeg(vector<int>&, vector<path_seg>, Simdat&);
-	// Retrieves the initial path segment to look at
-	void	GetStartSeg(Simdat&, vector<int>&, int);
+	double	t0calc(const double, const Beam&, const Material&, const Settings&);
 	// Gets the maximum allowable step size for a path segment
-	double	GetRefTime(double&, vector<path_seg>&, Simdat&, int&);
-	double	GetRefTimeShape(double&, infBeam&, Simdat&, int&);
+	double	GetRefTime(const double, const int, const vector<path_seg>&, const Beam&);
 	// Finds the current beam location
-	int_seg GetBeamLoc(double, vector<path_seg>&, Simdat&, int&);
-	// Finds the current beam location for Inf Beams
-	int_shape_seg GetBeamLocShape(double, vector<path_shape_seg>&, Simdat&, int&);
-	// Estimates the actual end of the simulation
-	void	EstimateEndTime(Simdat&, vector<path_seg>&);
+	int_seg GetBeamLoc(const double, const int, const vector<path_seg>&, const Simdat&);
 	// Indicates when all points have solidified and the full scan is over
-	bool	sim_finish(double, Simdat&, int);
+	bool	sim_finish(const double, const Simdat&, const int);
+
+	// Calculates scan end time
+	void	Calc_AllScansEndTime(Simdat&);
+	// Calculates bounds of scan path
+	void	Calc_ScanBounds(Domain&, const vector<vector<path_seg>>&);
+	// Calculates the nondimensional integration time
+	void	Calc_NonD_dt(vector<Beam>&, const Material&);
+	// Calculates the maximum radius around the domain to be considered
+	void	Calc_RMax(Simdat&);
 }

@@ -34,20 +34,17 @@
 
 #pragma once
 #include "DataStructs.h"
-#include "Point.h"
+#include "Grid.h"
+#include "Util.h"
 
 using std::vector;
 using std::string;
 
 namespace Melt {
 	// Adds relevant points to check if they are melted or not based on the beam path
-	void beam_trace(vector<int>&, Point * const ptv, vector<path_seg>&, Simdat&, vector<int>&, int, int);
-	// Adds relevant points to check if they are melted or not based on the beam path (for Parallel Beams)
-	void beam_trace_parBeams(vector<int>&, Point* const ptv, vector<path_seg>&, Simdat&, vector<int>&, int, int);
-	// Adds relevant points to check if they are melted or not based on the beam path (for Infinite Beams)
-	void beam_trace_infBeams(vector<int>&, Point* const ptv, vector<path_seg>&, Simdat&, vector<int>&, int, int);
+	void beam_trace(vector<int>&, Grid&, const Simdat&, const double, const double);
 	// Checks the neigbors of points to see if they are melted too
-	void neighbor_check(vector<int>&, vector<int>& , vector<int>& , Point * const ptv, vector<omp_lock_t>&, double&, vector<int_seg>&, Simdat&, int);
+	void neighbor_check(vector<int>&, vector<int>& , vector<int>& , Grid&, vector<omp_lock_t>&, const Nodes&, const Simdat&, const double, const bool);
 	// Calculate the depth of a melt at a specific x,y coordinate. Only used in mode_3.
-	void calc_depth(vector<int>&, vector<int>&, vector<int>&, Point * const ptv, double&, vector<int_seg>&, vector<int_seg>&, vector<path_seg>&, Simdat&);
+	void calc_depth(vector<int>&, vector<int>&, vector<int>&, Grid&, const Nodes&, const Nodes&, const Simdat&, const double);
 }

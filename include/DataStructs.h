@@ -35,14 +35,25 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <climits>
+#include <cfloat>
 
 using std::vector;
 using std::string;
 
-struct int_seg{
-	double xb, yb, zb, taui, dtau, qmod;
+#define PI 3.14159265358979323846
+
+struct int_seg {
+	double xb, yb, zb, phix, phiy, phiz, dtau, qmod;
 };
 
+// What is used to integrate
+struct Nodes {
+	size_t size = 0;
+	vector<double> xb, yb, zb, phix, phiy, phiz, dtau, qmod;
+};
+
+// What is read in from the paths
 struct path_seg{
 	int smode;			//Segment mode (line melt | spot melt)
 	double sx, sy, sz;	//Segment end coordinates
@@ -51,103 +62,127 @@ struct path_seg{
 	double seg_time;	//Segment end time
 };
 
-struct parBeam
-{
-	double Xr, Yr, Pmod;
-};
-
-struct path_shape_seg {
-	int smode;			//Segment mode (line melt | spot melt)
-	double sx, sy, sz;	//Segment end coordinates
-	double sqmod;		//Segment power modulation
-	double sparam;		//Segment time parameter (speed | spot time )
-	double seg_time;	//Segment end time
-
-	double ax, ay, az;	//Segment beam diameter
-};
-
-struct int_shape_seg {
-	double xb, yb, zb, taui, dtau, qmod, ax, ay, az;
-};
-
-struct infBeam
-{
-	double eff, q;
-	double scanEndTime, nond_dt, min_axy, min_a;
-	int	shapeMod;
-	vector<path_shape_seg> ssegv;
-	vector<int_shape_seg> issegv;
-};
-
+// 3D coordinate
 struct coord
 {
 	double x, y, z;
 };
 
+// Filename read into simulation
 struct FileNames {
-	string	name, mat, beam, path;
-	string	domain, settings;
-	string	points, parBeams, infBeams;
+	string	name, dataDir, mode, material, beam, path;
+	string	domain, output, settings;
 };
 
+// Material constants
 struct Material {
-	double kon, rho, cps, T_liq, T_sol, Tinit;
-	double a;
-
-	//Parameter for columnar to equiaxed transition
-	int	calc_CET;
-	double cet_a, cet_n, cet_N0;
+	double kon; // Thermal Conductivty
+	double rho; // Density
+	double cps; // Specifc Heat
+	double T_liq; // Liquidus Temperature
+	double T_init; // Inital Temperature (Preheat/Ambient)
+	double a; // Thermal Diffusivity
+	double cet_a, cet_n, cet_N0; // Parameters for CET
 };
 
+// Beam specific parameters
 struct Beam {
-	double ax, ay, az;
-	double eff, q;
+	double ax, ay, az; // Beam Shape
+	double eff; // Absoprtion Efficiency
+	double q; // Beam Power
+	double nond_dt; // Nondimensional Time
 };
 
+// Collection of simulation parameters
 struct SimParams {
+	// Mode
+	string mode; // Snapshots, TemperatureHistory, Solidification
+	
+	// Snapshots
+	vector<double> SnapshotTimes;
+
+	// Solidification
+	string tracking = "None";		// meltpool tracking mode
+	double dt = 1e-5;			// timestep
+	int out_freq = 1;		// output frequency
+	bool secondary = false;		// calculate secondary solidifiaction
+};
+
+// Domain paramters
+struct Domain {
+	// Domain numbers
 	int xnum, ynum, znum, pnum;
-	double xmin, xmax, ymin, ymax, zmin, zmax;
-	double BC_xmin, BC_xmax, BC_ymin, BC_ymax;
+
+	// Domain bounds 
+	double xmin = DBL_MAX;
+	double xmax = -DBL_MAX;
+	double ymin = DBL_MAX;
+	double ymax = -DBL_MAX;
+	double zmin = DBL_MAX;
+	double zmax = -DBL_MAX;
+
+	// Domain resolution
 	double xres, yres, zres;
-	int mode, sol_finish, out_freq, use_PINT;
-	double dt;
-};
 
-struct Settings {
-	int thnum;
-	double dttest, dtau_min, t_hist, p_hist, r_max;
-	int max_iter;
-	int neighborhood;
+	// Domain reflections
+	bool use_BCs;
+	int	BC_reflections;
+	double BC_xmin, BC_xmax, BC_ymin, BC_ymax, BC_zmin;
 
-	int out_mode;
-	int T_hist;
-
-	int compress;
-	int use_BCs;
-
-	int customPoints;
-	int parBeams;
-	int infBeams;
-};
-
-struct Utility {
-	double nond_dt; 
-	int np;
-	double scanEndTime;
-	double approxEndTime;
-	int start_seg;
-	int prog_print_last=0;
-};
-
-struct Simdat{
-	FileNames	file;
-	Material	mat;
-	Beam		beam;
-	SimParams	param;
-	Settings	setting;
-	Utility		util;
-
+	// Domain point file
+	string pointsFile;
 	vector<coord> points;
-	vector<parBeam> parBeams;
-	vector<infBeam> infBeams;
+	bool customPoints;
+};
+
+// Fundamental settings
+struct Settings {
+	
+	// Itegration settings
+	double dtau_min, t_hist, p_hist, r_max;
+	
+	// Liquidus search via Newton method settings
+	int max_iter;
+	double dttest;
+	
+	// Scan Path Compression
+	int compress;
+
+	// Compute
+	int thnum;
+	bool use_PINT;
+};
+
+// Some utility variables
+struct Utility { 
+	double allScansEndTime = 0;		// Time when all scans are done
+	double approxEndTime = 0;		// Approximate end time to simulation
+	bool sol_finish = false;				// Has solidification finished
+	bool do_sol = false;					// Do solidification calculation
+};
+
+// What variables to output
+struct Output {
+	bool x, y, z;
+	bool T, T_hist;
+	bool tSol, G, Gx, Gy, Gz, V, dTdt, eqFrac, RDF, numMelt;
+	bool H, Hx, Hy, Hz;
+};
+
+// Entire simulation data structure
+struct Simdat{
+	FileNames	files;
+	Output		output;
+
+	Material	material;
+
+	vector<Beam> beams;
+	vector<vector<path_seg>> paths;
+
+	Domain		domain;
+	SimParams	param;
+	
+	Settings	settings;
+
+	Utility		util;
 };
