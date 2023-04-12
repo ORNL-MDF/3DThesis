@@ -155,10 +155,9 @@ double Grid::Calc_T(const double t, const Nodes& nodes, const Simdat& sim, const
 		const double phiy = nodes.phiy[iter];
 		const double phiz = nodes.phiz[iter];
 
-		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz))) / (sqrt(phix * phiy * phiz));
-
-		const double dT_seg = nodes.dtau[iter] * nodes.qmod[iter] * phi;
-
+		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz)) + nodes.expmod[iter]);
+		const double dT_seg = nodes.dtau[iter] * phi;
+		
 		dT += dT_seg;
 	}
 
@@ -298,9 +297,9 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Primary(const double t, const No
 		const double phiy = nodes.phiy[iter];
 		const double phiz = nodes.phiz[iter];
 
-		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz))) / (sqrt(phix * phiy * phiz));
+		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz)) + nodes.expmod[iter]);
 
-		const double dT_seg = nodes.dtau[iter] * nodes.qmod[iter] * phi;
+		const double dT_seg = nodes.dtau[iter] * phi;
 
 		dT += dT_seg;
 
@@ -316,7 +315,7 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Primary(const double t, const No
 		Gz_temp += dT_seg * dpz;	//z-gradient
 
 		Laplace += dT_seg * (dpx * dpx + dpy * dpy + dpz * dpz + ddpx + ddpy + ddpz); //laplacian
-		if (nodes.dtau[iter] == 0) { dT_t += (nodes.qmod[iter] * phi); }  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
+		if (nodes.dtau[iter] == 0) { dT_t += phi; }  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
 	}
 
 	vector<double> primaryParams = { Gx_temp, Gy_temp, Gz_temp, Laplace, dT_t };
@@ -358,9 +357,9 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Secondary(const double t, const 
 		const double phiy = nodes.phiy[iter];
 		const double phiz = nodes.phiz[iter];
 
-		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz))) / (sqrt(phix * phiy * phiz));
+		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz)) + nodes.expmod[iter]);
 
-		const double dT_seg = nodes.dtau[iter] * nodes.qmod[iter] * phi;
+		const double dT_seg = nodes.dtau[iter] * phi;
 
 		dT += dT_seg;
 
@@ -376,7 +375,7 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Secondary(const double t, const 
 		Gz_temp += dT_seg * dpz;	//z-gradient
 
 		Laplace += dT_seg * (dpx * dpx + dpy * dpy + dpz * dpz + ddpx + ddpy + ddpz); //laplacian
-		if (nodes.dtau[iter] == 0) { dT_t += (nodes.qmod[iter] * phi); }  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
+		if (nodes.dtau[iter] == 0) { dT_t += phi; }  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
 		
 		dGxdx += dT_seg * (dpx * dpx + ddpx);
 		dGxdy += dT_seg * (dpx * dpy);

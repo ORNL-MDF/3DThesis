@@ -50,7 +50,11 @@ struct int_seg {
 // What is used to integrate
 struct Nodes {
 	size_t size = 0;
-	vector<double> xb, yb, zb, phix, phiy, phiz, dtau, qmod;
+	// {xb,yb,zb} = coords
+	// {phix,phiy,phiz} = diffusion
+	// {dtau} = node weight
+	// {expmod} = frontloads computation
+	vector<double> xb, yb, zb, phix, phiy, phiz, dtau, expmod;
 };
 
 // What is read in from the paths

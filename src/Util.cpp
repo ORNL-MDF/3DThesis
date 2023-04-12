@@ -73,7 +73,7 @@ void	Util::AddToNodes(Nodes& nodes, const int_seg seg) {
 	nodes.phiy.push_back(seg.phiy);
 	nodes.phiz.push_back(seg.phiz);
 	nodes.dtau.push_back(seg.dtau);
-	nodes.qmod.push_back(seg.qmod);
+	nodes.expmod.push_back(log(seg.qmod)-log(seg.phix * seg.phiy * seg.phiz) / 2.0);
 }
 
 void	Util::CombineNodes(Nodes& nodes, const Nodes& nodes2) {
@@ -85,7 +85,7 @@ void	Util::CombineNodes(Nodes& nodes, const Nodes& nodes2) {
 	nodes.phiy.insert(nodes.phiy.end(), nodes2.phiy.begin(), nodes2.phiy.end());
 	nodes.phiz.insert(nodes.phix.end(), nodes2.phiz.begin(), nodes2.phiz.end());
 	nodes.dtau.insert(nodes.dtau.end(), nodes2.dtau.begin(), nodes2.dtau.end());
-	nodes.qmod.insert(nodes.qmod.end(), nodes2.qmod.begin(), nodes2.qmod.end());
+	nodes.expmod.insert(nodes.expmod.end(), nodes2.expmod.begin(), nodes2.expmod.end()); 
 }
 
 void	Util::ClearNodes(Nodes& nodes) {
@@ -97,7 +97,7 @@ void	Util::ClearNodes(Nodes& nodes) {
 	nodes.phiy.clear();
 	nodes.phiz.clear();
 	nodes.dtau.clear();
-	nodes.qmod.clear();
+	nodes.expmod.clear();
 }
 
 void	Util::Calc_AllScansEndTime(Simdat& sim) {

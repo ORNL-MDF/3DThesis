@@ -108,7 +108,7 @@ int main(int argc, char * argv[]) {
 	//else { Out::Write_csv(grid, sim, "Snapshot", 0); }
 
 	//if (sim.settings.T_hist) { Out::Write_T_hist(grid, sim, "TemperatureHistory"); }
-	system("pause");
+	//system("pause");
 
 	return 0;
 }
