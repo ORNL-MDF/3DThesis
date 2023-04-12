@@ -12,11 +12,11 @@ Temperature
 Solidification
 {
 	tSol	0
-	G	0
+	G	1
 	Gx	0
 	Gy	0
 	Gz	0
-	V	0
+	V	1
 	dTdt	0
 	eqFrac	0
 	RDF	0
