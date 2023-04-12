@@ -73,11 +73,11 @@ void Calc::Integrate_Serial(Nodes& nodes, const Simdat& sim, const double t, con
 	if (sim.settings.compress) { 
 		Calc::GaussCompressIntegrate(nodes, sim, t, isSol); 
 		//If not solidifying, always choose the minimum of the two; otherwise, too expensive
-		//if (!sol) {
-		//	Nodes isegv_reg;
-		//	Calc::GaussIntegrate(isegv_reg, segv, sim, t, sol);
-		//	if (isegv_reg.size() <= nodes.size()) { nodes = isegv_reg; }
-		//}
+		if (!isSol) {
+			Nodes nodes_reg;
+			Calc::GaussIntegrate(nodes_reg, sim, t, isSol);
+			if (nodes_reg.size <= nodes.size) { nodes = nodes_reg; }
+		}
 	}
 	else { 
 		Calc::GaussIntegrate(nodes, sim, t, isSol);
@@ -91,7 +91,7 @@ void Calc::Integrate_Serial(Nodes& nodes, const Simdat& sim, const double t, con
 void Calc::GaussIntegrate(Nodes& nodes, const Simdat& sim, const double t, const bool isSol) {
 	
 	// This enables the starting search path segment to be quickly initialized each time. 
-	static vector<int> start_seg(sim.paths.size(), 0);
+	static vector<int> start_seg(sim.paths.size(), 1);
 
 	// Quadrature node locations for order 2, 4, 8, and 16
 	static const double locs[30] = {
@@ -108,24 +108,25 @@ void Calc::GaussIntegrate(Nodes& nodes, const Simdat& sim, const double t, const
 		0.10122854, 0.22238103, 0.31370665, 0.36268378, 0.36268378, 0.31370665, 0.22238103, 0.10122854,
 		0.02715246, 0.06225352, 0.09515851, 0.12462897, 0.14959599, 0.16915652,0.18260342, 0.18945061, 0.18945061, 0.18260342, 0.16915652, 0.14959599,0.12462897, 0.09515851, 0.06225352, 0.02715246
 	};
-
 	// For each beam and path
 	for (int i = 0; i < sim.paths.size(); i++) {
-		
+
 		// Set beam, path, and seg_temp
 		const Beam& beam = sim.beams[i];
 		const vector<path_seg>& path = sim.paths[i];
 		int seg_temp = start_seg[i];
+
+		// Get beta for beam
 		const double beta = pow(3.0 / PI, 1.5) * beam.q / (sim.material.rho * sim.material.cps);
 
 		// Keep incrementing up if t is greater than the end of the path segment but also below the end time of the scan
-		while ((t > path[seg_temp].seg_time) && (seg_temp + 1 < path.size() - 1)) { seg_temp++; }
+		while ((t > path[seg_temp].seg_time) && (seg_temp + 1 < path.size())) { seg_temp++; }
 		// Keep incrementing down if t is less than end of previous path segment
-		while (t < path[seg_temp - 1].seg_time) { seg_temp--; }
+		while ((t < path[seg_temp - 1].seg_time) && (seg_temp - 1 > 0)) { seg_temp--; }
 		
 		// If not solidifying, then make this the start next time the function is run
 		if (!isSol) {start_seg[i] = seg_temp;}
-		
+
 		// Get minimim time to integrate to
 		const double t0 = Util::t0calc(t, beam, sim.material, sim.settings);
 		
@@ -152,7 +153,7 @@ void Calc::GaussIntegrate(Nodes& nodes, const Simdat& sim, const double t, const
 		current_beam.phiz = (beam.az * beam.az + 0.0);
 		current_beam.qmod *= beta;
 		current_beam.dtau = 0.0;
-		if (t <= path.back().seg_time) { Util::AddToNodes(nodes, current_beam); }
+		if (t <= path.back().seg_time && current_beam.qmod > 0.0) { Util::AddToNodes(nodes, current_beam); }
 
 		bool tflag = true;
 		double t2 = t;
@@ -196,14 +197,13 @@ void Calc::GaussIntegrate(Nodes& nodes, const Simdat& sim, const double t, const
 			}
 
 			//Add Quadrature Points
-			double beta, tau, ct;
+			double tau, ct;
 			for (int a = (2 * curOrder - 3); a > (curOrder - 3); a--) {
 				double tp = 0.5 * ((t2 - t1) * locs[a] + (t2 + t1));
-				current_beam = Util::GetBeamLoc(tp, seg_temp, path, sim);
-				
-				beta = pow(3.0 / PI, 1.5) * beam.q / (sim.material.rho * sim.material.cps);
 				tau = t - tp;
 				ct = 12.0 * sim.material.a * tau;
+
+				current_beam = Util::GetBeamLoc(tp, seg_temp, path, sim);
 				current_beam.phix = (beam.ax * beam.ax + ct);
 				current_beam.phiy = (beam.ay * beam.ay + ct);
 				current_beam.phiz = (beam.az * beam.az + ct);
@@ -236,7 +236,7 @@ void Calc::GaussIntegrate(Nodes& nodes, const Simdat& sim, const double t, const
 
 void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double t, const bool isSol) {
 	// This enables the starting search path segment to be quickly initialized each time. 
-	static vector<int> start_seg(sim.paths.size(), 0);
+	static vector<int> start_seg(sim.paths.size(), 1);
 
 	// Quadrature node locations for order 2, 4, 8, and 16
 	static const double locs[30] = {
@@ -261,12 +261,14 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 		const Beam& beam = sim.beams[i];
 		const vector<path_seg>& path = sim.paths[i];
 		int seg_temp = start_seg[i];
+
+		// Get beta for beam
 		const double beta = pow(3.0 / PI, 1.5) * beam.q / (sim.material.rho * sim.material.cps);
 
 		// Keep incrementing up if t is greater than the end of the path segment but also below the end time of the scan
-		while ((t > path[seg_temp].seg_time) && (t < path.back().seg_time)) { seg_temp++; }
+		while ((t > path[seg_temp].seg_time) && (seg_temp + 1 < path.size())) { seg_temp++; }
 		// Keep incrementing down if t is less than end of previous path segment
-		while (t < path[seg_temp - 1].seg_time) { seg_temp--; }
+		while ((t < path[seg_temp - 1].seg_time) && (seg_temp - 1 > 0)) { seg_temp--; }
 
 		// If not solidifying, then make this the start next time the function is run
 		if (!isSol) { start_seg[i] = seg_temp; }
@@ -297,7 +299,7 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 		current_beam.phiz = (beam.az * beam.az + 0.0);
 		current_beam.qmod *= beta;
 		current_beam.dtau = 0.0;
-		if (t <= path.back().seg_time) { Util::AddToNodes(nodes, current_beam); }
+		if (t <= path.back().seg_time && current_beam.qmod>0.0) { Util::AddToNodes(nodes, current_beam); }
 
 		bool tflag = true;
 		double t2 = t;
@@ -477,6 +479,7 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 						double tp = 0.5 * ((t2 - t1) * locs[a] + (t2 + t1));
 						tau = t - tp;
 						ct = 12.0 * sim.material.a * tau;
+
 						current_beam.phix = (beam.ax * beam.ax + ct);
 						current_beam.phiy = (beam.ay * beam.ay + ct);
 						current_beam.phiz = (beam.az * beam.az + ct);
@@ -490,10 +493,11 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 			//Add Quadrature Points
 			else {
 				for (int a = (2 * curOrder - 3); a > (curOrder - 3); a--) {
-					double tp = 0.5 * ((t2 - t1) * locs[a] + (t2 + t1));
-					int_seg current_beam = Util::GetBeamLoc(tp, seg_temp, path, sim);
+					double tp = 0.5 * ((t2 - t1) * locs[a] + (t2 + t1));	
 					tau = t - tp;
 					ct = 12.0 * sim.material.a * tau;
+
+					int_seg current_beam = Util::GetBeamLoc(tp, seg_temp, path, sim);
 					current_beam.phix = (beam.ax * beam.ax + ct);
 					current_beam.phiy = (beam.ay * beam.ay + ct);
 					current_beam.phiz = (beam.az * beam.az + ct);

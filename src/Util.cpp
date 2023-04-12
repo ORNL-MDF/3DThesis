@@ -83,7 +83,7 @@ void	Util::CombineNodes(Nodes& nodes, const Nodes& nodes2) {
 	nodes.zb.insert(nodes.zb.end(), nodes2.zb.begin(), nodes2.zb.end());
 	nodes.phix.insert(nodes.phix.end(), nodes2.phix.begin(), nodes2.phix.end());
 	nodes.phiy.insert(nodes.phiy.end(), nodes2.phiy.begin(), nodes2.phiy.end());
-	nodes.phiz.insert(nodes.phix.end(), nodes2.phiz.begin(), nodes2.phiz.end());
+	nodes.phiz.insert(nodes.phiz.end(), nodes2.phiz.begin(), nodes2.phiz.end());
 	nodes.dtau.insert(nodes.dtau.end(), nodes2.dtau.begin(), nodes2.dtau.end());
 	nodes.expmod.insert(nodes.expmod.end(), nodes2.expmod.begin(), nodes2.expmod.end()); 
 }
@@ -195,15 +195,15 @@ double	Util::GetRefTime(const double tpp, const int seg, const vector<path_seg>&
 	double ref_t;
 	const double spp = max(tpp / beam.nond_dt, 0.0);
 	
-	//Sets maximum time for spot mode (equal to spot time)
-	if (path[seg].smode) {
-		ref_t = path[seg].seg_time - path[seg - 1].seg_time;
-		if (ref_t == 0) {ref_t = 1.0e-9;}
-	}
 	//Sets maximum time for line mode (derived from diffusion distance)
-	else {	
+	if (path[seg].smode == 0) {
 		double t0 = 0.58870501125 * beam.ax / path[seg].sparam; // sqrt(log(sqrt(2)))~0.58870501125
 		ref_t = t0 * sqrt(12.0 * spp + 1.0);
+	}
+	//Sets maximum time for spot mode (equal to spot time)
+	else if (path[seg].smode == 1) {
+		ref_t = path[seg].seg_time - path[seg - 1].seg_time;
+		if (ref_t == 0) {ref_t = 1.0e-9;}
 	}
 
 	return ref_t;

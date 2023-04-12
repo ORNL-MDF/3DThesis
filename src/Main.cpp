@@ -104,11 +104,7 @@ int main(int argc, char * argv[]) {
 	auto stop_out = high_resolution_clock::now();
 	std::cout << "Output time (s): " << (duration<double, std::milli>(stop_out - start_out).count()) / 1000.0 << "\n\n";
 
-	//if (sim.param.mode){ Out::Write_csv(grid, sim, "Final", sim.settings.out_mode); }
-	//else { Out::Write_csv(grid, sim, "Snapshot", 0); }
-
-	//if (sim.settings.T_hist) { Out::Write_T_hist(grid, sim, "TemperatureHistory"); }
-	//system("pause");
+	system("pause");
 
 	return 0;
 }
