@@ -97,8 +97,9 @@ int main(int argc, char * argv[]) {
 	auto start_out = high_resolution_clock::now();
 
 	if (sim.param.mode=="Solidification"){ grid.Output(sim, "Solidification.Final"); }
-	grid.Output_T_hist(sim, "T.hist");
-	grid.Output_RDF(sim, "RDF.Final");
+	if (sim.output.T_hist) { grid.Output_T_hist(sim, "T.hist"); }
+	if (sim.output.RDF) { grid.Output_RDF(sim, "RDF.Final"); }
+	
 
 	// Output output time
 	auto stop_out = high_resolution_clock::now();

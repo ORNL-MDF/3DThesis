@@ -19,8 +19,9 @@ Solidification
 	V	1
 	dTdt	0
 	eqFrac	0
-	RDF	0
+	depth	0
 	numMelt	0
+	RDF	0
 }
 Solidification+
 {

@@ -238,3 +238,44 @@ void Melt::calc_depth(vector<int>& depths, vector<int>& liq_pts, vector<int>& re
 	}
 	return;
 }
+
+void Melt::calc_depth_max(vector<int>& depths, vector<double>& depth_max, vector<int>& liq_pts, Grid& grid, const Nodes& nodes, const Simdat& sim) {
+	if (sim.domain.znum == 1 || sim.output.depth == 0) { return; }
+	#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
+	for (int it = 0; it < liq_pts.size(); it++) {
+		const int p = liq_pts[it];
+		const int i = grid.get_i(p);
+		const int j = grid.get_j(p);
+		int dnum = i * sim.domain.ynum + j;
+		int depth_liq = depths[dnum];
+
+		double depth;
+		if (depth_liq == sim.domain.znum - 1) {
+			depth = depth_liq;
+		}
+		else {
+			int depth_sol = depth_liq + 1;
+
+			const int p_liq = Util::ijk_to_p(i, j, sim.domain.znum - 1 - depth_liq, sim);
+			const int p_sol = Util::ijk_to_p(i, j, sim.domain.znum - 1 - depth_sol, sim);
+			const double T_liq = grid.get_T(p_liq);
+			const double T_sol = grid.get_T(p_sol);
+
+			depth = depth_liq + (sim.material.T_liq - T_liq) / (T_sol - T_liq);
+
+		}
+
+		// If depth is greater
+		if (depth > depth_max[dnum]) {
+			// Store maximum depth
+			depth_max[dnum] = depth;
+			// Set that points and all points above it to have that max depth
+			for (int d = depth_liq; d >= 0; d--) {
+				const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
+				grid.set_depth(depth, p_temp);
+			}
+		}
+
+	}
+	return;
+}

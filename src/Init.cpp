@@ -751,8 +751,9 @@ void	Init::FileRead_Output(Output& output, const string& file) {
 	subWords[2].push_back("V");
 	subWords[2].push_back("dTdt");
 	subWords[2].push_back("eqFrac");
-	subWords[2].push_back("RDF");
+	subWords[2].push_back("depth");
 	subWords[2].push_back("numMelt");
+	subWords[2].push_back("RDF");
 
 	subWords[3].push_back("H");
 	subWords[3].push_back("Hx");
@@ -778,8 +779,10 @@ void	Init::FileRead_Output(Output& output, const string& file) {
 	Init::SetValues(output.V, values[2][5], false, "output-V", 1);
 	Init::SetValues(output.dTdt, values[2][6], false, "output-dTdt", 1);
 	Init::SetValues(output.eqFrac, values[2][7], false, "output-eqFrac", 1);
-	Init::SetValues(output.RDF, values[2][8], false, "output-RDF", 1);
+	Init::SetValues(output.depth, values[2][8], false, "output-depth", 1);
 	Init::SetValues(output.numMelt, values[2][9], false, "output-numMelt", 1);
+	Init::SetValues(output.RDF, values[2][10], false, "output-RDF", 1);
+
 
 	Init::SetValues(output.H, values[3][0], false, "output-H", 1);
 	Init::SetValues(output.Hx, values[3][1], false, "output-Hx", 1);

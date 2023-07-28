@@ -396,6 +396,7 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 	// Vector of Liquid Point numbers
 	vector<int> liq_pts;
 	vector<int> depths(sim.domain.xnum*sim.domain.ynum, 0);
+	vector<double> depths_max(sim.domain.xnum * sim.domain.ynum, 0);
 
 	// Vector of Points to Reset Each Timestep
 	vector<int> reset_pts;
@@ -428,7 +429,7 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 		reset_pts = liq_pts;
 		liq_pts.clear();
 
-		//Check liquid points to see if they have solidified
+		//Check liquid points on surface to see if they have solidified
 		#pragma omp parallel num_threads(sim.settings.thnum)
 		{
 			vector<int> th_liq_pts;
@@ -443,7 +444,7 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 					const int j = grid.get_j(p);
 					const int dnum = i * sim.domain.ynum + j;
 					const int depth = depths[dnum];
-					for (int d = depth; d > 0; d--) {
+					for (int d = depth; d >= 0; d--) {
 						const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
 						grid.Calc_T(t, nodes, sim, true, p_temp);
 						if (d != depth) {
@@ -489,6 +490,9 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 
 		//Check the depths of the meltpool, solidify if needed
 		Melt::calc_depth(depths, liq_pts, reset_pts, grid, nodes, nodes_last, sim, t);
+
+		// Calculate the maximum depth under points
+		Melt::calc_depth_max(depths, depths_max, liq_pts, grid, nodes, sim);
 
 		//Output data
 		if (itert && (itert % sim.param.out_freq == 0)) {
