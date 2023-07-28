@@ -82,6 +82,8 @@ private:
 	double* Hy = NULL; // secondary solidification direction - store if output
 	double* Hz = NULL; // secondary solidification direction - store if output
 
+	double* depth = NULL; // max depth under point - store if output
+
 	vector<double>* T_hist = NULL; // temperature history - store if output
 	vector<double>* t_hist = NULL; // iteration history - store if output
 
@@ -194,24 +196,45 @@ public:
 				outputNames.push_back("eqFrac");
 				outputFuncs.push_back(bind(&Grid::get_eqFrac, this, _1));
 			}
-			if (sim.output.RDF) {
-				sim.util.do_sol = true;
-				RDF_tm = new vector<double>[pnum]();
-				RDF_tl = new vector<double>[pnum]();
-				RDF_cr = new vector<double>[pnum]();
+			if (sim.output.depth && sim.param.tracking == "Surface") {
+				depth = new double[pnum];
+				outputNames.push_back("depth");
+				outputFuncs.push_back(bind(&Grid::get_depth, this, _1));
 			}
 			if (sim.output.numMelt) {
 				if (!sim.output.RDF) { numMelt = new uint16_t[pnum](); }
 				outputNames.push_back("numMelt");
 				outputFuncs.push_back(bind(&Grid::get_numMelt, this, _1));
 			}
+			if (sim.output.RDF) {
+				sim.util.do_sol = true;
+				RDF_tm = new vector<double>[pnum]();
+				RDF_tl = new vector<double>[pnum]();
+				RDF_cr = new vector<double>[pnum]();
+			}
 		}
 
 		if (sim.param.mode == "Solidification" && sim.param.secondary == true) {
-			if (sim.output.H) { H = new double[pnum]; }
-			if (sim.output.Hx) { Hx = new double[pnum];}
-			if (sim.output.Hy) { Hy = new double[pnum]; }
-			if (sim.output.Hz) { Hz = new double[pnum]; }
+			if (sim.output.H) { 
+				H = new double[pnum]; 
+				outputNames.push_back("H");
+				outputFuncs.push_back(bind(&Grid::get_H, this, _1));
+			}
+			if (sim.output.Hx) { 
+				Hx = new double[pnum];
+				outputNames.push_back("Hx");
+				outputFuncs.push_back(bind(&Grid::get_Hx, this, _1));
+			}
+			if (sim.output.Hy) { 
+				Hy = new double[pnum]; 
+				outputNames.push_back("Hy");
+				outputFuncs.push_back(bind(&Grid::get_Hy, this, _1));
+			}
+			if (sim.output.Hz) { 
+				Hz = new double[pnum]; 
+				outputNames.push_back("Hz");
+				outputFuncs.push_back(bind(&Grid::get_Hz, this, _1));
+			}
 		}
 
 	}
@@ -271,6 +294,9 @@ public:
 	double get_V(const int p) { return V[p]; }
 	double get_dTdt(const int p) { return dTdt[p]; }
 	double get_eqFrac(const int p) { return eqFrac[p]; }
+	double get_depth(const int p) { 
+		return -(zmax - (depth[p] * ((zmax - zmin) / (znum - 1)))); 
+	}
 	uint16_t get_numMelt(const int p) { 
 		if (numMelt != NULL) {
 			return numMelt[p];
@@ -318,6 +344,8 @@ public:
 	void set_Hx(const double d, const int p) { if (Hx != NULL) { Hx[p] = d; } }
 	void set_Hy(const double d, const int p) { if (Hy != NULL) { Hy[p] = d; } }
 	void set_Hz(const double d, const int p) { if (Hz != NULL) { Hz[p] = d; } }
+
+	void set_depth(const double d, const int p) { if (depth != NULL) { depth[p] = d; } }
 
 	void add_RDF_tm(const double d, const int p) { 
 		if (RDF_tm != NULL) {
