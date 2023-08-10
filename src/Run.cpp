@@ -444,7 +444,7 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 					const int j = grid.get_j(p);
 					const int dnum = i * sim.domain.ynum + j;
 					const int depth = depths[dnum];
-					for (int d = depth; d >= 0; d--) {
+					for (int d = depth; d > 0; d--) {
 						const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
 						grid.Calc_T(t, nodes, sim, true, p_temp);
 						if (d != depth) {
