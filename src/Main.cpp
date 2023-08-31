@@ -105,7 +105,7 @@ int main(int argc, char * argv[]) {
 	auto stop_out = high_resolution_clock::now();
 	std::cout << "Output time (s): " << (duration<double, std::milli>(stop_out - start_out).count()) / 1000.0 << "\n\n";
 
-	system("pause");
+	//system("pause");
 
 	return 0;
 }

@@ -295,7 +295,7 @@ public:
 	double get_dTdt(const int p) { return dTdt[p]; }
 	double get_eqFrac(const int p) { return eqFrac[p]; }
 	double get_depth(const int p) { 
-		return -(zmax - (depth[p] * ((zmax - zmin) / (znum - 1)))); 
+		return (depth[p] * ((zmax - zmin) / (znum - 1))); 
 	}
 	uint16_t get_numMelt(const int p) { 
 		if (numMelt != NULL) {
