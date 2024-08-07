@@ -39,8 +39,25 @@ void Grid::InitializeGridPoints(const Simdat& sim) {
 	}
 }
 
-void Grid::Output(const Simdat& sim, const string name) {
+vector<vector<double>> Grid::Output_Table(const Simdat& sim) {
+	vector<vector<double>> data;
+	vector<double> row;
 	// If, for some reason, nothing is being output: return
+	const int numOut = outputNames.size();
+	if (numOut==0) { return data;}
+	for (int p = 0; p < sim.domain.pnum; p++){
+		if (get_output_flag(p)){
+			for (int i = 0; i < numOut; i++){
+				row.push_back(outputFuncs[i](p));
+			}
+		}
+		data.push_back(row);
+		row.clear();
+	}
+	return data;
+}
+
+void Grid::Output(const Simdat& sim, const string name){
 	const int numOut = outputNames.size();
 	if (numOut==0) { return; }
 
@@ -66,6 +83,7 @@ void Grid::Output(const Simdat& sim, const string name) {
 	catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
 	datafile.close();
 	return;
+
 }
 
 void Grid::Output_T_hist(const Simdat& sim, const string name) {

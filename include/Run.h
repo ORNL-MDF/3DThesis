@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) â€“ Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -51,6 +51,7 @@ namespace Run{
 	//Snapshot modes
 	void Snapshots_NoTracking(Grid&, const Simdat&);
 	void Snapshots_Volume(Grid&, const Simdat&);
+	void Snapshots_GeometryBounds(Grid&, const Simdat&);
 
 	//Choose between solidification modes
 	void Solidify(Grid&, const Simdat&);
