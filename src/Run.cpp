@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) â€“ Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -45,6 +45,8 @@
 #include "Melt.h"
 #include "Out.h"
 
+using namespace std;
+
 void Run::Simulate(Grid& grid, const Simdat& sim) {
 	
 	if (sim.param.mode == "Snapshots") { Run::Snapshots(grid, sim); }
@@ -81,6 +83,9 @@ void Run::Snapshots(Grid& grid, const Simdat& sim) {
 	}
 	else if (sim.param.tracking == "Surface") {
 		Run:Snapshots_Volume(grid, sim);
+	}
+	else if (sim.param.tracking == "Geometry") {
+		Run::Snapshots_GeometryBounds(grid, sim);
 	}
 	else {
 		std::cout << "ERROR: Unrecognized snapshots tracking: " << sim.param.tracking << "\n";
@@ -203,6 +208,202 @@ void Run::Snapshots_Volume(Grid& grid, const Simdat& sim) {
 	}
 
 }
+
+void Run::Snapshots_GeometryBounds(Grid& grid, const Simdat& sim) {
+	omp_set_nested(1);
+
+	const vector<string> col_names = {
+		"Length Raw (m)",
+		"Width Raw (m)",
+		"Origin X Raw (m)",
+		"Origin Y Raw (m)",
+		"Length Rotated (m)",
+		"Width Rotated (m)",
+		"Origin X Rotated (m)",
+		"Origin Y Rotated (m)",
+		"Percent Melted",
+		"Depth (m)"
+	};
+	const double zres = sim.domain.zres;
+
+	enum Columns {
+		x = 0,
+		y = 1,
+		z = 2,
+		T = 3,
+		length_raw = 0,
+		width_raw = 1,
+		origin_x_raw = 2,
+		origin_y_raw = 3,
+		length_rotated = 4,
+		width_rotated = 5,
+		origin_x_rotated = 6,
+		origin_y_rotated = 7,
+		percent_melted = 8,
+		depth = 9
+	};
+
+	vector<array<double, 10>> snaps;
+	vector<double> times;
+	vector<double> angles;
+	vector<double> x_col;
+	vector<double> y_col;
+	double nan = numeric_limits<double>::quiet_NaN();
+
+	//Sets locks so only 1 thread can access a master point at the same time
+	vector<omp_lock_t> lock(sim.domain.pnum);
+	Util::SetLocks(lock, sim);
+
+	//Pre-calculate integration loop information
+	vector<Nodes> isegv_par;
+	Nodes nodes;
+	
+	// Vector of Liquid Point numbers
+	vector<int> liq_pts;
+
+	// Vector of Points to Reset Each Timestep
+	vector<int> reset_pts;
+
+	// For all times, reset points, set approximate iteration, and get quadrature nodes
+	for (int i = 0; i < sim.param.SnapshotTimes.size(); i++) {
+		
+		// Reset all points to allow for temperature calculation
+		#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
+		for (int r = 0; r < reset_pts.size(); r++) {
+			const int p = reset_pts[r];
+			grid.set_output_flag(false, p);
+			grid.set_T_calc_flag(false, p);
+		}
+		reset_pts.clear();
+		
+		// Set time and "iteration"
+		const double t = sim.param.SnapshotTimes[i];
+		const int itert = i;
+
+		// Find angle and update time and angle vectors
+		double angle;
+		const vector<path_seg>& path = sim.paths[0];
+		int j = 0;
+		for (const path_seg& seg : path){
+			if (seg.seg_time >= t){
+				break;
+			}
+			j++;
+		}
+
+		double x_0 = path[j-1].sx;
+		double y_0 = path[j-1].sy;
+		double x_1 = path[j].sx;
+		double y_1 = path[j].sy;
+		double dx = x_1 - x_0;
+		double dy = y_1 - y_0;
+		double dt = path[j].seg_time - path[j-1].seg_time;
+
+		double beam_x = x_0 + (dx/dt)*(t - path[j-1].seg_time);
+		double beam_y = y_0 + (dy/dt)*(t - path[j-1].seg_time);
+
+		if (path[j].smode == 1){
+			angle = 0.0;
+			beam_x = x_1;
+			beam_y = y_1;
+		}
+		else{
+			angle = atan2(dy, dx);
+			beam_x = x_0 + (dx/dt)*(t - path[j-1].seg_time);
+			beam_y = y_0 + (dy/dt)*(t - path[j-1].seg_time);
+		}
+		angles.push_back(angle);
+		times.push_back(t);
+		x_col.push_back(beam_x);
+		y_col.push_back(beam_y);
+
+		// Output time
+		std::cout << "Time: " << t << "\n";
+
+		// Get quadrature nodes
+		Calc::Integrate_Serial(nodes, sim, t, false);
+
+		// Trace path from now until start of scan to seed initial points
+		vector<int> bm_tr_pts;
+		if (itert) { Melt::beam_trace(bm_tr_pts, grid, sim, 0, t); }
+		
+		// Calculate temperature of seed points and see what is liquid
+		vector<int> test_pts = liq_pts;
+		liq_pts.clear();
+		for (int it = 0; it < bm_tr_pts.size(); it++) {
+			const int p = bm_tr_pts[it];
+			reset_pts.push_back(p);
+			if (grid.Calc_T(t, nodes, sim, true, p) >= sim.material.T_liq) {
+				test_pts.push_back(p);
+				liq_pts.push_back(p);
+			}
+		}
+
+		//Iterative loop expanding from previously identified points to find melt pool boundary
+		while (true) {
+			if (!test_pts.size()) { break; }
+			Melt::neighbor_check(test_pts, liq_pts, reset_pts, grid, lock, nodes, sim, t, false);
+		}
+
+		// Update snapshot data
+		vector<vector<double>> pool;
+		for (int p : liq_pts){
+			pool.push_back({grid.get_x(p), grid.get_y(p), grid.get_z(p), grid.get_T(p)});
+		}
+		if (pool.size() == 0){snaps.push_back({0,0,nan,nan,0,0,nan,nan,0,0});}
+		else{
+			array<double, 10> row;
+			vector<vector<double>> df_rot = Util::rotateField(pool, angle, x, y);
+			array<double, 4> stats = Util::getLengthWidthOrigin(pool, zres, x, y);
+			for (int k = 0; k < 4; k++){
+				row[k] = stats[k];
+			}
+			stats = Util::getLengthWidthOrigin(df_rot, zres, x, y);
+			for (int k = 0; k < 4; k++){
+				row[k + 4] = stats[k];
+			}
+			double length = row[length_rotated];
+			double width = row[width_rotated];
+			double depth = Util::getMax(pool, z) - Util::getMin(pool, z);
+			if (depth == 0){depth = 0.5 * zres;}
+			row[8] = Util::getPerBoxMelted(pool, length, width, zres);
+			row[9] = depth;
+			snaps.push_back(row);
+		}		
+		// Clear integration segments
+		Util::ClearNodes(nodes);
+	}
+
+	// Output data file
+	std::ofstream datafile;
+	datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	string out_file = sim.files.dataDir + "/" + "snapshot_data.csv";
+	try {
+		datafile.open(out_file.c_str());
+		datafile << "Time (s),Scan Angle (rad)";
+		for (int i = 0; i < col_names.size(); i++){
+			datafile << "," + col_names[i];
+		}
+		datafile << ",Beam X,Beam Y";
+		datafile << "\n";
+		for (int i = 0; i < snaps.size(); i++){
+			array<double, 10> row = snaps[i];
+			datafile << times[i];
+			datafile << ",";
+			datafile << angles[i];
+			for (int j = 0; j < row.size(); j++){
+				datafile << ",";
+				datafile << row[j];
+			}
+			datafile << "," << x_col[i] << "," << y_col[i];
+			datafile << "\n";
+		}
+	}
+	catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
+	datafile.close();
+	return;
+}
+
 
 void Run::Solidify(Grid& grid, const Simdat& sim){
 	if (sim.param.tracking == "None" || sim.domain.customPoints) {

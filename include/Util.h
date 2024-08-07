@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) â€“ Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -39,6 +39,7 @@
 #include "DataStructs.h"
 
 using std::vector;
+using std::array;
 using std::string;
 using std::max;
 
@@ -75,4 +76,14 @@ namespace Util {
 	void	Calc_NonD_dt(vector<Beam>&, const Material&);
 	// Calculates the maximum radius around the domain to be considered
 	void	Calc_RMax(Simdat&);
-}
+
+	// Rotates melt pool based on scan angle
+	vector<vector<double>> rotateField(const vector<vector<double>>& df, double angle, const int x, const int y);
+	// Calculates min and max elements of a specific vector in the df
+	double getMin(const vector<vector<double>>& df, int index);
+	double getMax(const vector<vector<double>>& df, int index);
+	// Calculates length, width and origin of melt pool
+	std::array<double, 4> getLengthWidthOrigin(const vector<vector<double>>& df, double resolution, const int x, const int y);
+	// Calculates percentage of the melt pool box that is melted
+	double getPerBoxMelted(const vector<vector<double>>& df, double length, double width, double resolution);
+	}

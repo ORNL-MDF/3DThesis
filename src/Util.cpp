@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) â€“ Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -239,4 +239,43 @@ bool	Util::sim_finish(const double t, const Simdat& sim, const int liq_num) {
 	bool isDone = false;
 	if (t > sim.util.allScansEndTime && liq_num == 0) {isDone = true;}
 	return isDone;
+}
+
+vector<vector<double>> Util::rotateField(const vector<vector<double>>& df, double angle, const int x, const int y){
+    vector<vector<double>> df_rot(df);
+    for (size_t i = 0; i < df_rot.size(); i++){
+        df_rot[i][x] = df[i][x] * cos(-angle) - df[i][y] * sin(-angle);
+        df_rot[i][y] = df[i][x] * sin(-angle) + df[i][y] * cos(-angle);
+    }
+    return df_rot;
+}
+
+double Util::getMax(const vector<vector<double>>& df, int index){
+    return (*max_element(df.begin(), df.end(), [index](const vector<double>& a, const vector<double>& b) {
+        return a[index] < b[index];
+    }))[index];
+
+}
+
+double Util::getMin(const vector<vector<double>>& df, int index) {
+    return (*min_element(df.begin(), df.end(), [index](const vector<double>& a, const vector<double>& b) {
+        return a[index] < b[index];
+    }))[index];
+}
+
+std::array<double, 4> Util::getLengthWidthOrigin(const vector<vector<double>>& df, double resolution, const int x, const int y){
+    double length = Util::getMax(df, x) - Util::getMin(df, x) + resolution;
+    double width = Util::getMax(df, y) - Util::getMin(df, y) + resolution;
+    std::array<double, 2> origin = {getMin(df, x), getMin(df, y)};
+    std::array<double, 4> stats = {length, width, origin[0], origin[1]};
+    return stats;
+}
+
+
+double Util::getPerBoxMelted(const vector<vector<double>>& df, double length, double width, double resolution){
+    double melted_area = df.size() * pow(resolution, 2);
+    double box_area = length * width;
+    double per_box_melted = melted_area / box_area * 100;
+    if (per_box_melted <= 100.0) {return per_box_melted;}
+    else {return std::numeric_limits<double>::quiet_NaN();}
 }
