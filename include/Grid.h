@@ -241,6 +241,7 @@ public:
 	~Grid() {};
 	void InitializeGridPoints(const Simdat&);
 	void Output(const Simdat&, const string);
+	vector<vector<double>> Output_Table(const Simdat& sim);
 	void Output_T_hist(const Simdat&, const string);
 	void Output_RDF(const Simdat&, const string);
 
