@@ -11,6 +11,7 @@
 #include <string>
 #include <functional> 
 
+using std::bind;
 using std::function;
 using std::vector;
 using std::string;
