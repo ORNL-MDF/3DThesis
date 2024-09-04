@@ -1,0 +1,41 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: ${ {github.event_name }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{github.event_name == 'pull_request'}}
+
+jobs:
+  CI:
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        distro: ['ubuntu:latest']
+        cxx: ['g++', 'clang++']
+        cmake_build_type: ['Debug', 'Release']
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout 3DThesis
+        uses: actions/checkout@v3
+      - name: Build 3DThesis
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/3dthesis \
+            -DMPIEXEC_PREFLAGS="--oversubscribe" \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_CXX_FLAGS="-Wall -pedantic ${cmake_cxx_flags[@]}" \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            ${cmake_opts[@]}
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Test 3DThesis
+        run: |
+          $HOME/3dthesis/bin/3dThesis
