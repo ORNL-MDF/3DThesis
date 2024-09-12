@@ -255,9 +255,9 @@ public:
 	void Set_Solidficiaton_Secondary(const vector<double>&, const vector<double>&, const Simdat&, const int);
 
 	// Gets //
-	int get_i(const int p) { return i[p]; }
-	int get_j(const int p) { return j[p]; }
-	int get_k(const int p) { return k[p]; }
+	inline int get_i(const int p) { return i[p]; }
+	inline int get_j(const int p) { return j[p]; }
+	inline int get_k(const int p) { return k[p]; }
 
 	bool get_T_calc_flag(const int p) { return T_calc_flag[p]; }
 	bool get_output_flag(const int p) { 
