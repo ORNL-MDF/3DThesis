@@ -18,7 +18,3 @@ install(TARGETS Thesis
 add_library(Thesis::Thesis ALIAS Thesis)
 target_compile_features(Thesis PUBLIC cxx_std_11)
 target_link_libraries(Thesis PUBLIC OpenMP::OpenMP_CXX)
-
-add_executable(3DThesis Main.cpp)
-target_link_libraries(3DThesis LINK_PUBLIC Thesis)
-install(TARGETS 3DThesis DESTINATION ${CMAKE_INSTALL_BINDIR})

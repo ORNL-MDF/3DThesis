@@ -7,3 +7,4 @@ include(GNUInstallDirs)
 find_package(OpenMP)
 
 add_subdirectory(src)
+add_subdirectory(bin)
