@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) â€“ Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -33,17 +33,30 @@
 */
 
 #pragma once
+#include <vector>
 #include "DataStructs.h"
 #include "Grid.h"
-
-#include <deque>
 
 using std::vector;
 using std::string;
 
-namespace Out {
-	// Writes the progress to the console
-	void Progress(const Simdat&, const int);
-	// Writes the progress of points to the console
-	void Point_Progress(const Simdat&, const int);
+namespace Run{
+	//Chooses between modes
+	void Simulate(Grid&, const Simdat&);
+	
+	//Choose between snapshot modes
+	void Snapshots(Grid&, const Simdat&);
+
+	//Snapshot modes
+	void Snapshots_NoTracking(Grid&, const Simdat&);
+	void Snapshots_Volume(Grid&, const Simdat&);
+	void Snapshots_GeometryBounds(Grid&, const Simdat&);
+
+	//Choose between solidification modes
+	void Solidify(Grid&, const Simdat&);
+
+	//Solidification Modes
+	void Solidify_NoTracking(Grid&, const Simdat&); 
+	void Solidify_Volume(Grid&, const Simdat&);
+	void Solidify_Surface(Grid&, const Simdat&);
 }

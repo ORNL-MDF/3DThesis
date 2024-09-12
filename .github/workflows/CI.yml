@@ -38,4 +38,4 @@ jobs:
           cmake --install build
       - name: Test 3DThesis
         run: |
-          $HOME/3dthesis/bin/3dThesis
+          $HOME/3dthesis/bin/3DThesis
