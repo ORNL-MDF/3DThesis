@@ -404,7 +404,6 @@ void Run::Snapshots_GeometryBounds(Grid& grid, const Simdat& sim) {
 	return;
 }
 
-
 void Run::Solidify(Grid& grid, const Simdat& sim){
 	if (sim.param.tracking == "None" || sim.domain.customPoints) {
 		Run::Solidify_NoTracking(grid, sim);
@@ -414,6 +413,9 @@ void Run::Solidify(Grid& grid, const Simdat& sim){
 	}
 	else if (sim.param.tracking == "Surface") {
 		Run::Solidify_Surface(grid, sim);
+	}
+	else if (sim.param.tracking == "Stork"){
+		Run::Solidify_Stork(grid, sim);
 	}
 	else {
 		std::cout << "ERROR: Unrecognized solidfication tracking: " << sim.param.tracking << "\n";
@@ -714,5 +716,380 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 		nodes_last = nodes;
 		Util::ClearNodes(nodes);
 	}
+	return;
+}
+
+void Run::Solidify_Stork(Grid& grid, const Simdat& sim) {
+	omp_set_nested(1);
+
+	//Sets locks so only 1 thread can access a master point at the same time
+	vector<omp_lock_t> lock(sim.domain.pnum);
+	Util::SetLocks(lock, sim);
+
+	// Vector of Liquid Point numbers
+	vector<int> liq_pts;
+	vector<int> depths(sim.domain.xnum*sim.domain.ynum, 0);
+	vector<double> depths_max(sim.domain.xnum * sim.domain.ynum, 0);
+
+	// Vector of Points to Reset Each Timestep
+	vector<int> reset_pts;
+
+	// Integration information
+	Nodes nodes;
+	Nodes nodes_last;
+
+	// Grid of liquid info (cells)
+	const int c_xnum = (sim.domain.xnum-1);
+	const int c_ynum = (sim.domain.ynum-1);
+	const int c_znum = (sim.domain.znum-1);
+	const int c_pnum = c_xnum*c_ynum*c_znum;
+	vector<uint8_t> c_alpha(c_pnum, static_cast<uint8_t>(0));
+	vector<uint8_t> c_beta(c_pnum, static_cast<uint8_t>(0));
+
+	// Info for "vertices"
+	vector<double> T_alpha(sim.domain.pnum, sim.material.T_init);
+	vector<double> T_beta(sim.domain.pnum, sim.material.T_init);
+	vector<uint8_t> T_calc_alpha(sim.domain.pnum, static_cast<uint8_t>(1));
+	vector<uint8_t> T_calc_beta(sim.domain.pnum, static_cast<uint8_t>(1));
+	vector<uint8_t> isLiq(sim.domain.pnum, static_cast<uint8_t>(0));
+
+	// Vectors to store data into
+	vector<uint32_t> idxs;
+	vector<float> ts;
+	vector<float> Ts;
+
+	// Vector to store relevant C's in
+	vector<int> c_relevant;
+	c_relevant.reserve(c_pnum);
+
+	int itert = 0, liq_num = 0;
+	double t = 0.0;
+
+	while (true) {
+		Out::Progress(sim, itert);
+
+		// Determine which c is current and previous
+		vector<uint8_t>& c_prev = ((itert%2) ? c_alpha : c_beta);
+        vector<uint8_t>& c_cur = ((itert%2) ? c_beta : c_alpha);
+		vector<double>& T_prev = ((itert%2) ? T_alpha : T_beta);
+		vector<double>& T_cur = ((itert%2) ? T_beta : T_alpha);
+		vector<uint8_t>& T_calc_prev = ((itert%2) ? T_calc_alpha : T_calc_beta);
+		vector<uint8_t>& T_calc_cur = ((itert%2) ? T_calc_beta : T_calc_alpha);
+
+		// Reset current T_calc flags
+		std::fill(c_cur.begin(), c_cur.end(), static_cast<uint8_t>(0));
+		std::fill(T_calc_cur.begin(), T_calc_cur.end(), static_cast<uint8_t>(0));
+		std::fill(isLiq.begin(),isLiq.end(),static_cast<uint8_t>(0));
+		c_relevant.clear();
+
+		//Set T_calc_flag at all points to indicate that they have not yet been calculated
+		#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
+		for (int r = 0; r < reset_pts.size(); r++) {
+			const int p = reset_pts[r];
+			grid.set_T_last(p);
+			grid.set_T_calc_flag(0, p);
+		}
+		reset_pts.clear();
+
+		// Set surface liquid points from previous time to have their Temperatures checked
+		vector<int> last_liq_pts = liq_pts;
+		liq_pts.clear();
+
+		// Calculate Integration information
+		Calc::Integrate_Parallel(nodes, sim, t, false);
+
+		// Check liquid points on surface to see if they have solidified
+		#pragma omp parallel num_threads(sim.settings.thnum)
+		{
+			vector<int> th_liq_pts;
+			vector<int> th_reset_pts;
+			#pragma omp for schedule(static)
+			for (int it = 0; it < last_liq_pts.size(); it++) {
+				const int p = last_liq_pts[it];
+				// Calculate Temperature
+				T_cur[p] = grid.Calc_T(t, nodes, sim, true, p);
+				T_calc_cur[p] = 1;
+				// Push back points to reset
+				th_reset_pts.push_back(p);
+				// If it is still molten, add it to liquid points
+				if (T_cur[p] >= sim.material.T_liq)
+				{
+					// Add to surface liquid points to being checking
+					th_liq_pts.push_back(p);
+					
+				}
+				// If the previously molten surface point has solidified, then every point below it must have as well
+				else 
+				{
+					// Get the <i,j> and depth
+					const int i = grid.get_i(p);
+					const int j = grid.get_j(p);
+					const int dnum = i * sim.domain.ynum + j;
+					// Set depth to zero
+					depths[dnum] = 0;
+				}
+			}
+			// Concatenate all liquid points together
+			#pragma omp critical
+			{
+				reset_pts.insert(reset_pts.end(), th_reset_pts.begin(), th_reset_pts.end());
+				liq_pts.insert(liq_pts.end(), th_liq_pts.begin(), th_liq_pts.end());
+			}
+		}
+
+		// Start search from points that are known to be liquid
+		vector<int> test_pts = liq_pts;
+
+		// Trace beam path between time steps and add relevant points to the test vector
+		vector<int> bm_tr_pts;
+		if (itert && t < sim.util.allScansEndTime + sim.param.dt) { 
+			Melt::beam_trace(bm_tr_pts, grid, sim, t-sim.param.dt, t);
+		}
+
+		// For all beam trace points, if they are molten, add them to the total liquid points and points to start checking surface neighbors
+		for (int it = 0; it < bm_tr_pts.size(); it++) {
+			const int p = bm_tr_pts[it];
+			reset_pts.push_back(p);
+			// Calculate Temperature
+			if (T_calc_cur[p]==0){
+				T_cur[p] = grid.Calc_T(t, nodes, sim, true , p);
+				T_calc_cur[p] = 1;
+				if (T_cur[p] >= sim.material.T_liq) {
+					test_pts.push_back(p);
+					liq_pts.push_back(p);
+				}
+			}
+		}
+
+		// Iterative loop expanding from previously identified points to find melt pool boundary
+		while (true) {
+			if (!test_pts.size()) { break; }
+			vector<int> test_tmp;
+			//identify neighbors of liquid points on surface
+			#pragma omp parallel num_threads(sim.settings.thnum)
+			{
+				vector<int> th_liq_pts;
+				vector<int> th_test_tmp;
+				vector<int> th_reset_pts;
+				//Find neighbors in test_pts for checking
+				#pragma omp for schedule(static)
+				for (int it = 0; it < test_pts.size(); it++) {
+					//Get i, j, k location of current point, then construct array of neighbors
+					const int p = test_pts[it];
+					const int i = grid.get_i(p);
+					const int j = grid.get_j(p);
+					const int k = grid.get_k(p);
+					// For neighbors
+					for (int di=0;di<3;di++){
+						for (int dj=0;dj<3;dj++){
+							const int ni = i + di - 1;
+							const int nj = j + dj - 1;
+							const bool i_ob = (ni<0 || ni>sim.domain.xnum-1);
+							const bool j_ob = (nj<0 || nj>sim.domain.ynum-1);
+							if (i_ob || j_ob) { continue;}
+							const int p_temp = Util::ijk_to_p(ni, nj, k, sim); 
+							bool Tflag = false;
+							omp_set_lock(&(lock[p_temp]));
+							if (!grid.get_T_calc_flag(p_temp)) {
+								grid.set_T_calc_flag(true, p_temp);
+								Tflag = true;
+							}
+							omp_unset_lock(&(lock[p_temp]));
+							if (Tflag) {
+								T_cur[p_temp] = grid.Calc_T(t, nodes, sim, true , p_temp);
+								T_calc_cur[p_temp] = 1;
+								if (T_cur[p_temp] >= sim.material.T_liq) {
+									th_liq_pts.push_back(p_temp);
+									th_test_tmp.push_back(p_temp);
+								}
+								th_reset_pts.push_back(p_temp);
+							}
+						}
+					}
+				}
+				#pragma omp critical
+				{
+					liq_pts.insert(liq_pts.end(), th_liq_pts.begin(), th_liq_pts.end());
+					test_tmp.insert(test_tmp.end(), th_test_tmp.begin(), th_test_tmp.end());
+					reset_pts.insert(reset_pts.end(), th_reset_pts.begin(), th_reset_pts.end());
+				}
+			}
+			test_pts.clear();
+			test_pts = test_tmp;
+		}
+		
+		// Find the depths at each <i,j> of the meltpool
+		#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static) //dynamic,1+last_liq_pts.size()/sim.settings.thnum/64)
+		for (int it = 0; it < liq_pts.size(); it++) {
+			// Get <i,j> of the point
+			const int p = liq_pts[it];
+			const int i = grid.get_i(p);
+			const int j = grid.get_j(p);
+			// Get starting depth
+			const int dnum = i * sim.domain.ynum + j;
+			int depth = depths[dnum];
+			bool wentDeeper = false;
+			while (true) {
+				// Increment depth
+				depth++;
+				// If at bottom of domain, break and display message
+				if (depth == sim.domain.znum) { 
+					std::cout << "WARNING::MAXIMUM EXCEEDED";
+					break; 
+				}
+				// Find point number
+				const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - depth, sim);
+				// If the point is solid, go to next loop
+				T_cur[p_temp] = grid.Calc_T(t, nodes, sim, false, p_temp);
+				T_calc_cur[p_temp] = 1;
+				if (T_cur[p_temp] < sim.material.T_liq) {break;}
+				// Otherwise, set a flag saying we sucessfully went deeper
+				else { wentDeeper = true; }
+			}
+			while (true) {
+				// Decrement depth
+				depth--;
+				// If at the bottom or we already went deeper, break
+				if (depth == 0 || wentDeeper == true) { break; }
+				// Find point number
+				const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - depth, sim);
+				// If point is liquid, break
+				T_cur[p_temp] = grid.Calc_T(t, nodes, sim, false, p_temp);
+				T_calc_cur[p_temp] = 1;
+				if (T_cur[p_temp] >= sim.material.T_liq) { break; }
+			}
+			// If at max depth, decrement once
+			if (depth == sim.domain.znum - 1) { depth--; }
+			// Store depth
+			depths[dnum] = depth;
+			// For all points in the depth, set to be liquid
+			for (int d = 0; d <= depth; d++) {
+				const int k = sim.domain.znum - 1 - d;
+				const int p_temp = Util::ijk_to_p(i, j, k, sim);
+				isLiq[p_temp] = true;
+			}
+		}
+
+		if (last_liq_pts.size() || liq_pts.size()){
+			// Loop over and compress to C
+			#pragma omp parallel num_threads(sim.settings.thnum)
+			{
+				vector<int> th_c_relevant;
+				th_c_relevant.reserve(c_pnum);
+				#pragma omp for schedule(static)//dynamic,16384)//static)
+				for (int c = 0; c < c_pnum; c++){
+					// Get <i,j,k> of the min point (which is <ci,cj,ck>)
+					const int ci = (c/c_ynum)/(c_znum);
+					const int cj = (c/c_znum)%(c_ynum);
+					const int ck = (c%c_znum);
+					// Loop over to cell vertices find number of liquid points
+					for (int di=0;di<2;di++){
+						for (int dj=0;dj<2;dj++){
+							for (int dk=0;dk<2;dk++){
+								const int i = ci + di;
+								const int j = cj + dj;
+								const int k = ck + dk;
+								// Get point number
+								const int p = Util::ijk_to_p(i, j, k, sim);
+								// Add to counter
+								c_cur[c] += isLiq[p];
+							}
+						}
+					}
+					// If we should be saving temperatures
+					if (c_cur[c]!=c_prev[c] || c_prev[c]%8 || c_cur[c]%8){
+						th_c_relevant.push_back(c);
+					}
+				}
+				#pragma omp critical
+				{
+					c_relevant.insert(c_relevant.end(), th_c_relevant.begin(), th_c_relevant.end());
+				}
+			}
+		}
+
+		if (c_relevant.size()){
+			// Put data in a struct, calculate as needed
+			#pragma omp parallel num_threads(sim.settings.thnum)
+			{
+				vector<uint32_t> th_idxs;
+				vector<float> th_ts;
+				vector<float> th_Ts;
+				#pragma omp for schedule(static)
+				for (int i=0; i<c_relevant.size();i++){
+					// get <i,j,k> of cell
+					const int c = c_relevant[i];
+					const int ci = (c/c_ynum)/(c_znum);
+					const int cj = (c/c_znum)%(c_ynum);
+					const int ck = (c%c_znum);
+					// Store index data
+					th_idxs.push_back(ci);
+					th_idxs.push_back(cj);
+					th_idxs.push_back(ck);
+					// Store time data
+					th_ts.push_back(t - sim.param.dt);
+					th_ts.push_back(t);
+					// Loop over cell vertices to calculate temperatures
+					int n=0;
+					vector<float> temp_Ts(16);
+					for (int di=0;di<2;di++){
+						for (int dj=0;dj<2;dj++){
+							for (int dk=0;dk<2;dk++){
+								const int i = ci + di;
+								const int j = cj + dj;
+								const int k = ck + dk;
+								// Get point number
+								const int p = Util::ijk_to_p(i, j, k, sim);
+								// "Atomically" determine temperatures to be calculated
+								bool T_calc_p_prev = false;
+								bool T_calc_p_cur = false;
+								omp_set_lock(&(lock[p]));
+								{
+									if (T_calc_prev[p] == 0) {
+										T_calc_prev[p] = 1;
+										T_calc_p_prev = true;
+									}
+									if (T_calc_cur[p] == 0) {
+										T_calc_cur[p] = 1;
+										T_calc_p_cur = true;
+									}
+									// Calculate temperatures
+									if (T_calc_p_prev){T_prev[p] = grid.Calc_T(t - sim.param.dt, nodes_last, sim, false, p);}
+									if (T_calc_p_cur){T_cur[p] = grid.Calc_T(t, nodes, sim, false, p);}
+								}
+								omp_unset_lock(&(lock[p]));
+								// Set temperatures
+								temp_Ts[n] = T_prev[p];
+								temp_Ts[n+8] = T_cur[p];
+								// Increment neighbor number
+								n++;
+							}
+						}
+					}
+					th_Ts.insert(th_Ts.end(), temp_Ts.begin(), temp_Ts.end());
+				}
+				// Concatenate data
+				#pragma omp critical
+				{
+					idxs.insert(idxs.end(), th_idxs.begin(), th_idxs.end());
+					ts.insert(ts.end(), th_ts.begin(), th_ts.end());
+					Ts.insert(Ts.end(), th_Ts.begin(), th_Ts.end());
+				}
+			}
+		}
+
+		//Check if simulation is finished
+		if (Util::sim_finish(t, sim, liq_pts.size())) {	break; }
+
+		t += sim.param.dt;			//Increment time
+		itert++;					//Increment time step counter
+		nodes_last = nodes;
+		Util::ClearNodes(nodes);
+	}
+
+	// Output RRDF
+	// Out::RRDF_csv(sim, idxs, ts, Ts);
+	Out::RRDF_bin(sim, idxs, ts, Ts);
+
 	return;
 }
