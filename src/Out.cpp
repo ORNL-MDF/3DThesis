@@ -76,8 +76,8 @@ void Out::RRDF_csv(const Simdat& sim, const vector<uint32_t>& idxs, const vector
 
 	// Get header info
 	const uint32_t size = ts.size()/2;
-	const uint32_t extent[3] = {sim.domain.xnum, sim.domain.ynum, sim.domain.znum};
-	const float floats[5] = {sim.domain.xmin, sim.domain.ymin, sim.domain.zmin, sim.domain.xres, sim.material.T_liq};
+	const uint32_t extent[3] = {static_cast<uint32_t>(sim.domain.xnum), static_cast<uint32_t>(sim.domain.ynum), static_cast<uint32_t>(sim.domain.znum)};
+	const float floats[5] = {static_cast<float>(sim.domain.xmin), static_cast<float>(sim.domain.ymin), static_cast<float>(sim.domain.zmin), static_cast<float>(sim.domain.xres), static_cast<float>(sim.material.T_liq)};
 
 	// Output CSV
 	std::ofstream datafile;
@@ -109,8 +109,8 @@ void Out::RRDF_bin(const Simdat& sim, const vector<uint32_t>& idxs, const vector
 	
 	// Get header info
 	const uint32_t size = ts.size()/2;
-	const uint32_t extent[3] = {sim.domain.xnum, sim.domain.ynum, sim.domain.znum};
-	const float floats[5] = {sim.domain.xmin, sim.domain.ymin, sim.domain.zmin, sim.domain.xres, sim.material.T_liq};	
+	const uint32_t extent[3] = {static_cast<uint32_t>(sim.domain.xnum), static_cast<uint32_t>(sim.domain.ynum), static_cast<uint32_t>(sim.domain.znum)};
+	const float floats[5] = {static_cast<float>(sim.domain.xmin), static_cast<float>(sim.domain.ymin), static_cast<float>(sim.domain.zmin), static_cast<float>(sim.domain.xres), static_cast<float>(sim.material.T_liq)};	
 	
 	// Open up binary file
 	std::ofstream os(binFile, std::ios::binary);

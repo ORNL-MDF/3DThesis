@@ -82,7 +82,7 @@ void Run::Snapshots(Grid& grid, const Simdat& sim) {
 		Run::Snapshots_Volume(grid, sim);
 	}
 	else if (sim.param.tracking == "Surface") {
-		Run:Snapshots_Volume(grid, sim);
+		Run::Snapshots_Volume(grid, sim);
 	}
 	else if (sim.param.tracking == "Geometry") {
 		Run::Snapshots_GeometryBounds(grid, sim);

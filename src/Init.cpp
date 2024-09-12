@@ -55,7 +55,6 @@
 void	Init::Keywords_Lv1(vector<string>& mainWords, vector<int>& isIn, const string& input_file) {
 	string line;
 	std::ifstream readFile;
-	int num_read = 0;
 	readFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try {
 		readFile.open(input_file.c_str(), std::ios::in);
