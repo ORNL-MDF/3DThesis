@@ -243,7 +243,6 @@ double Grid::Calc_Solidification_time(const double t, const Simdat& sim, const i
 	double err_limit = sim.settings.dttest;
 
 	double m = 0.0;
-	double dT = 0.0;
 
 	Nodes nodes;
 

@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) - Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -96,16 +96,13 @@ int main(int argc, char * argv[]) {
 	// Start output clock
 	auto start_out = high_resolution_clock::now();
 
-	if (sim.param.mode=="Solidification"){ grid.Output(sim, "Solidification.Final"); }
+	if (sim.param.mode=="Solidification" && sim.param.tracking!="Stork"){ grid.Output(sim, "Solidification.Final"); }
 	if (sim.output.T_hist) { grid.Output_T_hist(sim, "T.hist"); }
 	if (sim.output.RDF) { grid.Output_RDF(sim, "RDF.Final"); }
 	
-
 	// Output output time
 	auto stop_out = high_resolution_clock::now();
 	std::cout << "Output time (s): " << (duration<double, std::milli>(stop_out - start_out).count()) / 1000.0 << "\n\n";
-
-	//system("pause");
 
 	return 0;
 }

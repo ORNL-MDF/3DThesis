@@ -55,16 +55,12 @@ string Util::ZeroPadNumber(const int num, const int width)
 	return ss.str();
 }
 
-int		Util::ijk_to_p(const int i, const int j, const int k, const Simdat& sim) {
-	return i * (sim.domain.znum * sim.domain.ynum) + j * sim.domain.znum + k;
-}
-
-void	Util::SetLocks(vector<omp_lock_t>& lock, const Simdat& sim) {
+void Util::SetLocks(vector<omp_lock_t>& lock, const Simdat& sim) {
 	for (int p = 0; p < lock.size(); p++) { omp_init_lock(&(lock[p])); }
 	return;
 }
 
-void	Util::AddToNodes(Nodes& nodes, const int_seg seg) {
+void Util::AddToNodes(Nodes& nodes, const int_seg seg) {
 	nodes.size++;
 	nodes.xb.push_back(seg.xb);
 	nodes.yb.push_back(seg.yb);
@@ -76,7 +72,7 @@ void	Util::AddToNodes(Nodes& nodes, const int_seg seg) {
 	nodes.expmod.push_back(log(seg.qmod)-log(seg.phix * seg.phiy * seg.phiz) / 2.0);
 }
 
-void	Util::CombineNodes(Nodes& nodes, const Nodes& nodes2) {
+void Util::CombineNodes(Nodes& nodes, const Nodes& nodes2) {
 	nodes.size += nodes2.size;
 	nodes.xb.insert(nodes.xb.end(), nodes2.xb.begin(), nodes2.xb.end());
 	nodes.yb.insert(nodes.yb.end(), nodes2.yb.begin(), nodes2.yb.end());
@@ -88,7 +84,7 @@ void	Util::CombineNodes(Nodes& nodes, const Nodes& nodes2) {
 	nodes.expmod.insert(nodes.expmod.end(), nodes2.expmod.begin(), nodes2.expmod.end()); 
 }
 
-void	Util::ClearNodes(Nodes& nodes) {
+void Util::ClearNodes(Nodes& nodes) {
 	nodes.size = 0;
 	nodes.xb.clear();
 	nodes.yb.clear();
@@ -100,13 +96,13 @@ void	Util::ClearNodes(Nodes& nodes) {
 	nodes.expmod.clear();
 }
 
-void	Util::Calc_AllScansEndTime(Simdat& sim) {
+void Util::Calc_AllScansEndTime(Simdat& sim) {
 	for (const vector<path_seg>& path : sim.paths) {
 		sim.util.allScansEndTime = max(sim.util.allScansEndTime, path.back().seg_time);
 	}
 }
 
-void	Util::Calc_ScanBounds(Domain& domain, const vector<vector<path_seg>>& paths) {
+void Util::Calc_ScanBounds(Domain& domain, const vector<vector<path_seg>>& paths) {
 	double xmin = DBL_MAX;
 	double xmax = -DBL_MAX;
 	double ymin = DBL_MAX;
@@ -136,14 +132,14 @@ void	Util::Calc_ScanBounds(Domain& domain, const vector<vector<path_seg>>& paths
 
 }
 
-void	Util::Calc_NonD_dt(vector<Beam>& beams, const Material& material) {
+void Util::Calc_NonD_dt(vector<Beam>& beams, const Material& material) {
 	for (Beam& beam : beams) {
 		beam.nond_dt = beam.ax * beam.ax / material.a;
 	}
 	return;
 }
 
-void	Util::Calc_RMax (Simdat& sim){
+void Util::Calc_RMax (Simdat& sim){
 	sim.settings.t_hist = 1.0 / sim.settings.t_hist;
 	if (sim.settings.r_max<0.0) {
 		for (const Beam& beam : sim.beams) {
@@ -166,13 +162,13 @@ void	Util::Calc_RMax (Simdat& sim){
 	return;
 }
 
-bool	Util::InRMax(const double x, const double y, const Domain& domain, const Settings& settings) {
+bool Util::InRMax(const double x, const double y, const Domain& domain, const Settings& settings) {
 	if ((x > (domain.xmax + settings.r_max)) || (x < (domain.xmin - settings.r_max))) {return false;}
 	else if ((y >(domain.ymax + settings.r_max)) || (y < (domain.ymin - settings.r_max))) {return false; }
 	else {return true;}
 }
 
-double	Util::t0calc(const double t, const Beam& beam, const Material& material, const Settings& settings) {
+double Util::t0calc(const double t, const Beam& beam, const Material& material, const Settings& settings) {
 	//Time for beam peak to decay to a fraction (t_hist) of it's initial power
 	const double t_hist_t = beam.nond_dt / 12.0*(pow(settings.t_hist, (2.0 / 3.0)) - 1); 
 
@@ -190,7 +186,7 @@ double	Util::t0calc(const double t, const Beam& beam, const Material& material, 
 	return t0;
 }
 
-double	Util::GetRefTime(const double tpp, const int seg, const vector<path_seg>& path, const Beam& beam) {
+double Util::GetRefTime(const double tpp, const int seg, const vector<path_seg>& path, const Beam& beam) {
 	
 	double ref_t;
 	const double spp = max(tpp / beam.nond_dt, 0.0);
@@ -235,7 +231,7 @@ int_seg	Util::GetBeamLoc(const double time, const int seg, const vector<path_seg
 	return current_seg;
 }
 
-bool	Util::sim_finish(const double t, const Simdat& sim, const int liq_num) {
+bool Util::sim_finish(const double t, const Simdat& sim, const int liq_num) {
 	bool isDone = false;
 	if (t > sim.util.allScansEndTime && liq_num == 0) {isDone = true;}
 	return isDone;

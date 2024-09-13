@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) - Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -325,7 +325,6 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 			double sum_t = 0, sum_qmodt = 0, sum_qmodtx = 0, sum_qmodty = 0; //sums of t, qmod*t, qmod*t*x,... to find centers
 			int seg_temp_2;
 			int num_comb_segs = 0; //number of segments to be combined
-			int cflag = 1;
 
 			//If the time is less than t0, break the whole thing
 			int quit = 0;
@@ -365,7 +364,7 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 
 			seg_temp_2 = seg_temp;
 
-			double t1 = path[seg_temp - 1].seg_time;
+			t1 = path[seg_temp - 1].seg_time;
 
 			//If we won't be switching segments, do normal integration
 			if (t1 < t2 - curStep_use) {
@@ -373,7 +372,7 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 				t1 = t2 - curStep_use;
 			}
 			else {
-				int cflag = 1;
+				bool cflag = true;
 				while (cflag) { //If we will be switching segments, do compressed integration
 								//If the segment start time is zero, end the loop
 					if (path[seg_temp_2 - 1].seg_time <= t0) { tflag = 0; break; }
@@ -418,12 +417,12 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 							sum_t += (t1 - t_int);
 							t1 = t_int;
 						}
-						cflag = 0;
+						cflag = false;
 					}
 					else {
 						//If the next time is less than the minimum allowed time, set appropriate times to the minimum allowed time
 						if (ts < t2 - curStep_max) {
-							cflag = 0;
+							cflag = false;
 							if (path[seg_temp_2].smode) { t1 = t2 - curStep_max; }
 							else { t1 = t2 - curStep_max; }
 						}

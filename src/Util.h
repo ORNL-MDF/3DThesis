@@ -35,6 +35,7 @@
 #pragma once
 #include <array>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <omp.h>
 #include "DataStructs.h"
@@ -49,7 +50,9 @@ namespace Util {
 	string ZeroPadNumber(const int);
 	string ZeroPadNumber(const int, const int);
 	// Turns ijk indices into global point number
-	int		ijk_to_p(const int, const int, const int, const Simdat&);
+	inline int ijk_to_p(const int i, const int j, const int k, const Simdat& sim) {
+		return i * (sim.domain.znum * sim.domain.ynum) + j * sim.domain.znum + k;
+	}
 	// Initializes the locks. They make sure only one thread can access a point at a time
 	void	SetLocks(vector<omp_lock_t>&, const Simdat&);
 	// Function to easily add integration segment to nodes
@@ -79,12 +82,12 @@ namespace Util {
 	void	Calc_RMax(Simdat&);
 
 	// Rotates melt pool based on scan angle
-	vector<vector<double>> rotateField(const vector<vector<double>>& df, double angle, const int x, const int y);
+	vector<vector<double>> rotateField(const vector<vector<double>>&, double, const int, const int);
 	// Calculates min and max elements of a specific vector in the df
-	double getMin(const vector<vector<double>>& df, int index);
-	double getMax(const vector<vector<double>>& df, int index);
+	double getMin(const vector<vector<double>>&, int);
+	double getMax(const vector<vector<double>>&, int);
 	// Calculates length, width and origin of melt pool
-	std::array<double, 4> getLengthWidthOrigin(const vector<vector<double>>& df, double resolution, const int x, const int y);
+	array<double, 4> getLengthWidthOrigin(const vector<vector<double>>&, double, const int, const int);
 	// Calculates percentage of the melt pool box that is melted
-	double getPerBoxMelted(const vector<vector<double>>& df, double length, double width, double resolution);
+	double getPerBoxMelted(const vector<vector<double>>&, double, double, double);
 	}

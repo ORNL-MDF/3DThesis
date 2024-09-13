@@ -33,12 +33,21 @@
 */
 
 #pragma once
+
+#include <omp.h>
+#include <cmath>
+
+#include <iostream>
+#include <fstream>
+
 #include <vector>
+#include <atomic>
 #include "DataStructs.h"
 #include "Grid.h"
 
 using std::vector;
 using std::string;
+using std::atomic;
 
 namespace Run{
 	//Chooses between modes
@@ -59,4 +68,7 @@ namespace Run{
 	void Solidify_NoTracking(Grid&, const Simdat&); 
 	void Solidify_Volume(Grid&, const Simdat&);
 	void Solidify_Surface(Grid&, const Simdat&);
+
+	//Special Mode for Stork Data
+	void Solidify_Stork(Grid&, const Simdat&);
 }

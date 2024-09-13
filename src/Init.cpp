@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) - Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -55,7 +55,6 @@
 void	Init::Keywords_Lv1(vector<string>& mainWords, vector<int>& isIn, const string& input_file) {
 	string line;
 	std::ifstream readFile;
-	int num_read = 0;
 	readFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try {
 		readFile.open(input_file.c_str(), std::ios::in);
@@ -343,8 +342,8 @@ void	Init::FileRead_Mode(Simdat& sim, const string& file) {
 		if (hasMainWords[i] > 0) {loc = i;}
 	}
 
-	if (sum > 1) {std::cout << "Fatal Error: Too many modes in file " << file << std::endl; system("pause"); exit(1);}
-	if (loc < 0) {std::cout << "Fatal Error: No modes in file " << file << std::endl; system("pause"); exit(1);}
+	if (sum > 1) {std::cout << "Fatal Error: Too many modes in file " << file << std::endl; exit(1);}
+	if (loc < 0) {std::cout << "Fatal Error: No modes in file " << file << std::endl; exit(1);}
 
 	sim.param.mode = "";
 	switch (loc) {
@@ -372,7 +371,7 @@ void	Init::FileRead_Mode_Snapshot(Simdat& sim, const string& file) {
 	Init::Keywords_Lv2(mainWords, subWords, values, file);
 
 	if (values[0][0].size() && values[0][1].size()) {
-		std::cout << "Fatal Error: Too many time types for snapshot in " << file << std::endl; system("pause"); exit(1);
+		std::cout << "Fatal Error: Too many time types for snapshot in " << file << std::endl; exit(1);
 	}
 
 	// For Times
