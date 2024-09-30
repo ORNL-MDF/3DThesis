@@ -152,6 +152,78 @@ void Grid::Output_RDF(const Simdat& sim, const string name) {
 	return;
 }
 
+void Grid::Output_RRDF_csv(const Simdat& sim, const string name){
+	
+	// Make fileName
+	const string csvFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".csv";
+
+	// Set references to data
+	const vector<uint32_t>& idxs = RRDF_idxs;
+	const vector<float>& ts = RRDF_Ts;
+	const vector<float>& Ts = RRDF_ts;
+
+	// Get header info
+	const uint32_t size = ts.size()/2;
+	const uint32_t extent[3] = {static_cast<uint32_t>(sim.domain.xnum), static_cast<uint32_t>(sim.domain.ynum), static_cast<uint32_t>(sim.domain.znum)};
+	const float floats[5] = {static_cast<float>(sim.domain.xmin), static_cast<float>(sim.domain.ymin), static_cast<float>(sim.domain.zmin), static_cast<float>(sim.domain.xres), static_cast<float>(sim.material.T_liq)};
+
+	// Output CSV
+	std::ofstream datafile;
+	datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	try {
+		datafile.open(csvFile.c_str());
+		datafile << "x,y,z,t_prev,t_cur";
+        datafile << ",T000_prev,T001_prev,T010_prev,T011_prev,T100_prev,T101_prev,T110_prev,T111_prev";
+        datafile << ",T000_cur,T001_cur,T010_cur,T011_cur,T100_cur,T101_cur,T110_cur,T111_cur\n";
+		for (uint32_t p = 0; p < size; p++) {
+            datafile << idxs[3*p+0] << "," << idxs[3*p+1] << "," << idxs[3*p+2] << "," << ts[2*p+0] << "," << ts[2*p+1];
+            for (int n=0;n<8;n++){
+                datafile << "," << Ts[16*p+n];
+            }
+            for (int n=0;n<8;n++){
+                datafile << "," << Ts[16*p+8+n];
+            }
+            datafile << "\n";
+		}
+	}
+	catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
+	datafile.close();
+}
+
+void Grid::Output_RRDF_bin(const Simdat& sim, const string name){
+	
+	// Make file name
+	const string binFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".bin";
+	
+	// Set references to data
+	const vector<uint32_t>& idxs = RRDF_idxs;
+	const vector<float>& ts = RRDF_Ts;
+	const vector<float>& Ts = RRDF_ts;
+
+	// Get header info
+	const uint32_t size = ts.size()/2;
+	const uint32_t extent[3] = {static_cast<uint32_t>(sim.domain.xnum), static_cast<uint32_t>(sim.domain.ynum), static_cast<uint32_t>(sim.domain.znum)};
+	const float floats[5] = {static_cast<float>(sim.domain.xmin), static_cast<float>(sim.domain.ymin), static_cast<float>(sim.domain.zmin), static_cast<float>(sim.domain.xres), static_cast<float>(sim.material.T_liq)};	
+	
+	// Open up binary file
+	std::ofstream os(binFile, std::ios::binary);
+	
+	// Write header to binary file	
+	os.write((const char*)&size, sizeof(uint32_t));
+	os.write((const char*)&extent, 3 * sizeof(uint32_t));
+	os.write((const char*)&floats, 5 * sizeof(float));
+	
+	// Write vectors to binary file
+	os.write((const char*)&idxs[0], 3 * size * sizeof(uint32_t));
+	os.write((const char*)&ts[0], 2 * size * sizeof(float));
+	os.write((const char*)&Ts[0], 16 * size * sizeof(float));
+	
+	// Close binary file
+	os.close();
+
+	std::cout << "Sizes: " << size << "\t" << idxs.size() << "\t" << ts.size() << "\t" << Ts.size() << std::endl;
+}
+
 double Grid::Calc_T(const double t, const Nodes& nodes, const Simdat& sim, const bool set, const int p) {
 	/**************************************************************************************************
 	Heat transfer kernel for ellipsoidal Gaussian volumentric heat source

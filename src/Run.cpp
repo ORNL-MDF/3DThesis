@@ -44,14 +44,21 @@
 #include "Util.h"
 #include "Melt.h"
 #include "Out.h"
+#include "Mpi_structs.hpp"
 
 using namespace std;
 
 void Run::Simulate(Grid& grid, const Simdat& sim) {
 	
-	if (sim.param.mode == "Snapshots") { Run::Snapshots(grid, sim); }
-	else if (sim.param.mode == "Solidification") { Run::Solidify(grid, sim); }
-	else { std::cout << "ERROR: Unrecognized mode: " << sim.param.mode << "\n"; }
+	if (sim.param.mode == "Snapshots") { 
+		Run::Snapshots(grid, sim); 
+	}
+	else if (sim.param.mode == "Solidification") { 
+		Run::Solidify(grid, sim); 
+	}
+	else { 
+		std::cout << "ERROR: Unrecognized mode: " << sim.param.mode << "\n"; 
+	}
 
 	// Mode - Solidification
 	//// Domain: Domain.txt, Points.txt
@@ -753,10 +760,10 @@ void Run::Solidify_Stork(Grid& grid, const Simdat& sim) {
 	vector<uint8_t> T_calc_beta(sim.domain.pnum, static_cast<uint8_t>(1));
 	vector<uint8_t> isLiq(sim.domain.pnum, static_cast<uint8_t>(0));
 
-	// Vectors to store data into
-	vector<uint32_t> idxs;
-	vector<float> ts;
-	vector<float> Ts;
+	// Get vectors to store data into
+	vector<uint32_t>& idxs = grid.get_RRDF_idxs();
+	vector<float>& ts = grid.get_RRDF_ts();
+	vector<float>& Ts = grid.get_RRDF_Ts();
 
 	// Vector to store relevant C's in
 	vector<int> c_relevant;
@@ -1086,10 +1093,6 @@ void Run::Solidify_Stork(Grid& grid, const Simdat& sim) {
 		nodes_last = nodes;
 		Util::ClearNodes(nodes);
 	}
-
-	// Output RRDF
-	// Out::RRDF_csv(sim, idxs, ts, Ts);
-	Out::RRDF_bin(sim, idxs, ts, Ts);
 
 	return;
 }
