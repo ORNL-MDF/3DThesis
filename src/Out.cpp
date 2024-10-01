@@ -18,7 +18,6 @@
 
 #include "Out.h"
 #include "DataStructs.h"
-#include "MpiStructs.h"
 
 void Out::Progress(const Simdat& sim, const int itert) {
 	static int prog_print_last = 0;

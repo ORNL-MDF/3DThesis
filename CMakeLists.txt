@@ -7,7 +7,9 @@ include(GNUInstallDirs)
 
 find_package(OpenMP)
 
-find_package(MPI REQUIRED)
+if(Thesis_ENABLE_MPI)
+  find_package(MPI REQUIRED COMPONENTS CXX)
+endif()
 
 add_subdirectory(src)
 add_subdirectory(bin)
