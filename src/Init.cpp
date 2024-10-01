@@ -37,6 +37,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <cstdint>
 #include <cfloat>
 #include <climits>
 

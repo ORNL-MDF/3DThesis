@@ -36,6 +36,7 @@
 #include "DataStructs.h"
 #include "Grid.h"
 
+#include <cstdint>
 #include <deque>
 
 using std::vector;
