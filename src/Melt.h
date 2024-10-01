@@ -26,4 +26,9 @@ namespace Melt {
 	void calc_depth(vector<int>&, vector<int>&, vector<int>&, Grid&, const Nodes&, const Nodes&, const Simdat&, const double);
 	// Calculate the max depth of a melt at a specific x,y coordinate. Only works in mode_3.
 	void calc_depth_max(vector<int>&, vector<double>&, vector<int>&, Grid&, const Nodes&, const Simdat&);
+	// Calculate meltpool statistics 
+	// NOTE:: Will not work well when spatially decomposed 
+	// NOTE:: Will not work well with multiple beams
+	void calc_mp_info(const vector<int>&, const vector<int>&, Grid&, const Simdat&, const double);
 }
+
