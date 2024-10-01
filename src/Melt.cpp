@@ -306,7 +306,7 @@ void Melt::calc_mp_info(const vector<int>& depths, const vector<int>& liq_pts, G
 	else{angle = atan2(dy, dx);}
 	
 	// Calculate depths and widths
-	if (liq_pts.size() != 0){
+	if (liq_pts.size() != 0 && path[seg].sqmod>0){
 
 		// Calculate rotated x,y of liquid points
 		double minRotX = std::numeric_limits<double>::max();
