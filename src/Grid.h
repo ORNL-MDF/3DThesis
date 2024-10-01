@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include <cmath>
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <functional> 
