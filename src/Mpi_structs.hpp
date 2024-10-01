@@ -66,7 +66,7 @@ public:
         const int j = coords[1];
 
         // Find local domain bounds (no overlap for else)
-        if (sim.param.tracking=="Stork"){ 
+        if (sim.param.mode=="Stork" || sim.settings.mpi_overlap){ 
             // Find local domain bounds (overlap for stork)
             i_min = ((sim.domain.xnum-1)*i)/I;
             i_max = ((sim.domain.xnum-1)*(i+1))/I;

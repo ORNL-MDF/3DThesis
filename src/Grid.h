@@ -163,12 +163,13 @@ public:
 			output_flag = new bool[pnum]();
 		}
 		
-		if (sim.param.mode == "Solidfication" && sim.param.tracking == "Stork"){
+		if (sim.param.mode == "Stork"){
 			RRDF_idxs.reserve(pnum);
 			RRDF_ts.reserve(2*pnum);
 			RRDF_Ts.reserve(16*pnum);
 		}
-		else if (sim.param.mode == "Solidification") {
+
+		if (sim.param.mode == "Solidification") {
 			T_last = new double[pnum]();
 			if (sim.output.tSol) {
 				sim.util.do_sol = true;
@@ -219,7 +220,7 @@ public:
 				outputFuncs.push_back(bind(&Grid::get_eqFrac, this, _1));
 			}
 			if (sim.output.depth && sim.param.tracking == "Surface") {
-				depth = new double[pnum];
+				depth = new double[pnum]();
 				outputNames.push_back("depth");
 				outputFuncs.push_back(bind(&Grid::get_depth, this, _1));
 			}
