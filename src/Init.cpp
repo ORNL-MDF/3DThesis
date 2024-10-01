@@ -753,6 +753,7 @@ void	Init::FileRead_Output(Output& output, const string& file) {
 	subWords[2].push_back("depth");
 	subWords[2].push_back("numMelt");
 	subWords[2].push_back("RDF");
+	subWords[2].push_back("MP_Stats");
 
 	subWords[3].push_back("H");
 	subWords[3].push_back("Hx");
@@ -781,7 +782,7 @@ void	Init::FileRead_Output(Output& output, const string& file) {
 	Init::SetValues(output.depth, values[2][8], false, "output-depth", 1);
 	Init::SetValues(output.numMelt, values[2][9], false, "output-numMelt", 1);
 	Init::SetValues(output.RDF, values[2][10], false, "output-RDF", 1);
-
+	Init::SetValues(output.mp_stats, values[2][11], false, "output-mpStats", 1);
 
 	Init::SetValues(output.H, values[3][0], false, "output-H", 1);
 	Init::SetValues(output.Hx, values[3][1], false, "output-Hx", 1);
@@ -797,6 +798,7 @@ void	Init::FileRead_Settings(Settings& settings, const string& file) {
 	mainWords.push_back("Temperature");
 	mainWords.push_back("Path");
 	mainWords.push_back("Compute");
+	mainWords.push_back("MPI");
 
 	vector<vector<string>> subWords(mainWords.size());
 	
@@ -810,6 +812,8 @@ void	Init::FileRead_Settings(Settings& settings, const string& file) {
 
 	subWords[2].push_back("MaxThreads");
 	subWords[2].push_back("PINT");
+
+	subWords[3].push_back("Overlap");
 
 	vector<vector<string>> values(mainWords.size());
 
@@ -825,6 +829,8 @@ void	Init::FileRead_Settings(Settings& settings, const string& file) {
 
 	Init::SetValues(settings.thnum, values[2][0], omp_get_max_threads()/2, "Number of Threads", 0);
 	Init::SetValues(settings.use_PINT, values[2][1], 0, "Parallel in Time Mode", 0);
+
+	Init::SetValues(settings.mpi_overlap, values[3][0], 0, "Mpi Overlap", 0);
 
 	return;
 }

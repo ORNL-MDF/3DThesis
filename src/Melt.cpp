@@ -278,3 +278,195 @@ void Melt::calc_depth_max(vector<int>& depths, vector<double>& depth_max, vector
 	}
 	return;
 }
+
+void Melt::calc_mp_info(const vector<int>& depths, const vector<int>& liq_pts, Grid& grid, const Simdat& sim, const double t){
+	// If not outputting, don't do
+	if (sim.output.mp_stats == 0) { return;}
+	
+	// This enables the starting search path segment to be quickly initialized each time. 
+	static int seg(1);
+
+	// Set reference just to first path
+	const vector<path_seg>& path = sim.paths[0];
+
+	// Keep incrementing up if t is greater than the end of the path segment but also below the end time of the scan
+	while ((t > path[seg].seg_time) && (seg + 1 < path.size())) { seg++; }
+	// Keep incrementing down if t is less than end of previous path segment
+	while ((t < path[seg - 1].seg_time) && (seg - 1 > 0)) { seg--; }
+
+	// Find angle and update time and angle vectors
+	double angle;
+	double x_0 = path[seg-1].sx;
+	double y_0 = path[seg-1].sy;
+	double x_1 = path[seg].sx;
+	double y_1 = path[seg].sy;
+	double dx = x_1 - x_0;
+	double dy = y_1 - y_0;
+	if (path[seg].smode == 1){angle = 0.0;}
+	else{angle = atan2(dy, dx);}
+	
+	// Calculate depths and widths
+	if (liq_pts.size() != 0){
+
+		// Calculate rotated x,y of liquid points
+		double minRotX = std::numeric_limits<double>::max();
+		double maxRotX= std::numeric_limits<double>::lowest();
+		double minRotY = std::numeric_limits<double>::max();
+		double maxRotY = std::numeric_limits<double>::lowest();
+		for (const int& liq_pt:liq_pts){
+			const double x = grid.get_x(liq_pt);
+			const double y = grid.get_y(liq_pt);
+
+			const double x_rot = x*cos(angle) + y*sin(angle);
+			minRotX = std::min(x_rot, minRotX);
+	        maxRotX = std::max(x_rot, maxRotX);
+
+			const double y_rot = -x*sin(angle) + y*cos(angle);
+			minRotY = std::min(y_rot, minRotY);
+	        maxRotY = std::max(y_rot, maxRotY);
+		}
+
+		// Calculate width and depth
+		const double width = maxRotY - minRotY;
+		const double length = maxRotX - minRotX;
+		
+		// Get depth
+		const double depth = sim.domain.xres * (*std::max_element(depths.begin(), depths.end()));
+
+		// Now add to all relevant points
+		for (const int& liq_pt:liq_pts){
+			// Get i,j and <ij>
+			const int i = grid.get_i(liq_pt);
+			const int j = grid.get_j(liq_pt);
+			int dnum = i * sim.domain.ynum + j;
+			// For points in depth
+			for (int d=0;d<=depths[dnum];d++){
+				const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
+				grid.set_mpWidth(width, p_temp);
+				grid.set_mpLength(length, p_temp);
+				grid.set_mpDepth(depth, p_temp);
+			}
+		}
+	}
+}
+
+// void findEigenValuesAndVectors(double xx, double xy, double yy, double& lambda1, double& lambda2, std::pair<double, double>& vec1, std::pair<double, double>& vec2) {
+//     // Calculate eigenvalues
+//     double trace = xx + yy;
+//     double determinant = xx * yy - xy * xy;
+//     double sqrtTerm = std::sqrt(trace * trace - 4 * determinant);
+
+//     lambda1 = (trace + sqrtTerm) / 2.0;
+//     lambda2 = (trace - sqrtTerm) / 2.0;
+
+//     // Calculate eigenvectors
+//     if (xy != 0) {
+//         // For lambda1
+//         vec1 = {lambda1 - yy, xy};
+//         // For lambda2
+//         vec2 = {lambda2 - yy, xy};
+//     } else {
+//         // Special case when b == 0 (diagonal matrix)
+//         vec1 = {1, 0}; // Eigenvector along x-axis
+//         vec2 = {0, 1}; // Eigenvector along y-axis
+//     }
+
+//     // Normalize the eigenvectors
+//     double norm1 = std::sqrt(vec1.first * vec1.first + vec1.second * vec1.second);
+//     vec1.first /= norm1;
+//     vec1.second /= norm1;
+
+//     double norm2 = std::sqrt(vec2.first * vec2.first + vec2.second * vec2.second);
+//     vec2.first /= norm2;
+//     vec2.second /= norm2;
+// }
+
+// void Melt::calc_mp_info(const vector<int>& depths, const vector<int>& liq_pts, Grid& grid, const Simdat& sim){
+// 	// If not outputting, don't do
+// 	if (sim.output.mp_stats == 0) { return;}
+    
+// 	// Compute means
+// 	double x_mean = 0.0;
+// 	double y_mean = 0.0;
+// 	for (const int& liq_pt:liq_pts){
+// 		x_mean += grid.get_x(liq_pt);
+// 		y_mean += grid.get_y(liq_pt);
+// 	}
+// 	x_mean /= liq_pts.size();
+//     y_mean /= liq_pts.size();
+
+// 	// Compute the covariance matrix elements
+//     double cov_xx = 0.0;
+// 	double cov_yy = 0.0;
+// 	double cov_xy = 0.0;
+// 	for (const int& liq_pt:liq_pts){
+// 		double x_diff = grid.get_x(liq_pt); - x_mean;
+//         double y_diff = grid.get_y(liq_pt); - y_mean;
+//         cov_xx += x_diff * x_diff;
+//         cov_yy += y_diff * y_diff;
+//         cov_xy += x_diff * y_diff;
+// 	}
+//     cov_xx /= liq_pts.size();
+//     cov_yy /= liq_pts.size();
+//     cov_xy /= liq_pts.size();
+
+// 	// Get eigenvalues and eigenvectors
+// 	double eig_1, eig_2;
+// 	std::pair<double, double> vec_1, vec_2;
+// 	findEigenValuesAndVectors(cov_xx, cov_xy, cov_yy, eig_1, eig_2, vec_1, vec_2);
+
+// 	// The eigenvector corresponding to the largest eigenvalue is the major axis
+// 	std::pair<double, double> minorAxis, majorAxis;
+//     if (eig_1 > eig_2) {
+//         majorAxis = vec_1;
+//         minorAxis = vec_2;
+//     } else {
+//         majorAxis = vec_2;
+//         minorAxis = vec_1;
+//     }
+
+// 	// Initialize min and max projections for major and minor axes
+//     double minMajorProj = std::numeric_limits<double>::max();
+//     double maxMajorProj = std::numeric_limits<double>::lowest();
+//     double minMinorProj = std::numeric_limits<double>::max();
+//     double maxMinorProj = std::numeric_limits<double>::lowest();
+
+//     // Project each point onto the major and minor axes
+//     for (const int& liq_pt:liq_pts) {
+//         double x_diff = grid.get_x(liq_pt) - x_mean;
+//         double y_diff = grid.get_y(liq_pt) - y_mean;
+
+//         // Projection onto the major axis
+//         double majorProj = x_diff * majorAxis.first + y_diff * majorAxis.second;
+//         minMajorProj = std::min(minMajorProj, majorProj);
+//         maxMajorProj = std::max(maxMajorProj, majorProj);
+
+//         // Projection onto the minor axis
+//         double minorProj = x_diff * minorAxis.first + y_diff * minorAxis.second;
+//         minMinorProj = std::min(minMinorProj, minorProj);
+//         maxMinorProj = std::max(maxMinorProj, minorProj);
+//     }
+
+//     // Calculate width and depth
+// 	const double width = maxMinorProj - minMinorProj;
+//     const double length = maxMajorProj - minMajorProj;
+	
+// 	// Get depth
+// 	const double depth = sim.domain.xres * (*std::max_element(depths.begin(), depths.end()));
+
+// 	// Now add to all relevant points
+// 	for (const int& liq_pt:liq_pts){
+// 		// Get i,j and <ij>
+// 		const int i = grid.get_i(liq_pt);
+// 		const int j = grid.get_j(liq_pt);
+// 		int dnum = i * sim.domain.ynum + j;
+// 		// For points in depth
+// 		for (int d=0;d<=depths[dnum];d++){
+// 			const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
+// 			grid.set_mpWidth(width, p_temp);
+// 			grid.set_mpLength(length, p_temp);
+// 			grid.set_mpDepth(depth, p_temp);
+// 		}
+// 	}
+
+// }

@@ -56,6 +56,9 @@ void Run::Simulate(Grid& grid, const Simdat& sim) {
 	else if (sim.param.mode == "Solidification") { 
 		Run::Solidify(grid, sim); 
 	}
+	else if (sim.param.mode == "Stork"){
+		Run::Stork(grid, sim);
+	}
 	else { 
 		std::cout << "ERROR: Unrecognized mode: " << sim.param.mode << "\n"; 
 	}
@@ -421,9 +424,6 @@ void Run::Solidify(Grid& grid, const Simdat& sim){
 	else if (sim.param.tracking == "Surface") {
 		Run::Solidify_Surface(grid, sim);
 	}
-	else if (sim.param.tracking == "Stork"){
-		Run::Solidify_Stork(grid, sim);
-	}
 	else {
 		std::cout << "ERROR: Unrecognized solidfication tracking: " << sim.param.tracking << "\n";
 	}
@@ -704,6 +704,9 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 		// Calculate the maximum depth under points
 		Melt::calc_depth_max(depths, depths_max, liq_pts, grid, nodes, sim);
 
+		// Calculate meltpool dimensions
+		Melt::calc_mp_info(depths, liq_pts, grid, sim, t);	
+
 		//Output data
 		if (itert && (itert % sim.param.out_freq == 0)) {
 			grid.Output(sim, "Solidification."+Util::ZeroPadNumber(itert));
@@ -726,7 +729,7 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 	return;
 }
 
-void Run::Solidify_Stork(Grid& grid, const Simdat& sim) {
+void Run::Stork(Grid& grid, const Simdat& sim) {
 	omp_set_nested(1);
 
 	//Sets locks so only 1 thread can access a master point at the same time

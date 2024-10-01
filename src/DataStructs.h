@@ -155,6 +155,9 @@ struct Settings {
 	// Compute
 	int thnum;
 	bool use_PINT;
+
+	// MPI
+	bool mpi_overlap;
 };
 
 // Some utility variables
@@ -170,7 +173,7 @@ struct Output {
 	bool x, y, z;
 	bool T, T_hist;
 	bool tSol, G, Gx, Gy, Gz, V, dTdt, eqFrac, depth, numMelt;
-	bool RDF;
+	bool RDF, mp_stats;
 	bool H, Hx, Hy, Hz;
 };
 

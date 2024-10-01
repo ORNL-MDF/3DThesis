@@ -79,7 +79,7 @@ int main(int argc, char * argv[]) {
 
 		if (sim.param.tracking!="Stork"){
 			if (sim.param.mode=="Solidification"){ 
-			grid.Output(sim, "Solidification.Final." + mpi.name); 
+				grid.Output(sim, "Solidification.Final." + mpi.name); 
 			}
 			if (sim.output.T_hist) { 
 				grid.Output_T_hist(sim, "T.hist." + mpi.name); 
@@ -87,13 +87,12 @@ int main(int argc, char * argv[]) {
 			if (sim.output.RDF) { 
 				grid.Output_RDF(sim, "RDF.Final." + mpi.name); 
 			}
+			if (sim.param.mode=="Stork"){
+				// Output RRDF
+				grid.Output_RRDF_csv(sim, "RRDF." + mpi.name);
+				//grid.Output_RRDF_bin(sim, "RRDF." + mpi.name);
+			}
 		}
-		else{
-			// Output RRDF
-			grid.Output_RRDF_csv(sim, "RRDF." + mpi.name);
-			//grid.Output_RRDF_bin(sim, "RRDF." + mpi.name);
-		}
-		
 		
 		// Output output time
 		auto stop_out = high_resolution_clock::now();
