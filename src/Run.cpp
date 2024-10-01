@@ -21,7 +21,7 @@
 #include "Util.h"
 #include "Melt.h"
 #include "Out.h"
-#include "Mpi_structs.hpp"
+#include "MpiStructs.h"
 
 using namespace std;
 

@@ -22,7 +22,7 @@
 #include "Out.h"
 
 #include "Grid.h"
-#include "Mpi_structs.hpp"
+#include "MpiStructs.h"
 
 using std::vector;
 using std::string;
