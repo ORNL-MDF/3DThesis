@@ -18,3 +18,4 @@ install(TARGETS Thesis
 add_library(Thesis::Thesis ALIAS Thesis)
 target_compile_features(Thesis PUBLIC cxx_std_11)
 target_link_libraries(Thesis PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(Thesis PUBLIC MPI::MPI_CXX)
