@@ -40,3 +40,4 @@ jobs:
       - name: Test 3DThesis
         run: |
           $HOME/3dthesis/bin/3DThesis
+          mpirun -n 2 --oversubscribe $HOME/3dthesis/bin/3DThesis
