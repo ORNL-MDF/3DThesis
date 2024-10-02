@@ -64,7 +64,7 @@ inline void run(int argc, char * argv[])
 	// Initialize MPI
 	ThesisMPI mpi(MPI_COMM_WORLD);
 
-	// Make local bounds
+	// Make local bounds and set local rank
 	mpi.makeLocalBounds(sim);
 #endif
 
@@ -76,7 +76,8 @@ inline void run(int argc, char * argv[])
 
 	// Output initialization time
 	auto stop_in = high_resolution_clock::now();
-	std::cout << "Initialization time (s): " << (duration<double, std::milli>(stop_in - start_in).count())/1000.0 << "\n\n"; //(stop_in - start_in) / double(CLOCKS_PER_SEC) << "\n\n";
+	if (sim.print)
+		std::cout << "Initialization time (s): " << (duration<double, std::milli>(stop_in - start_in).count())/1000.0 << "\n\n"; //(stop_in - start_in) / double(CLOCKS_PER_SEC) << "\n\n";
 
 	// Start simulation clock
 	auto start_sim = high_resolution_clock::now();
@@ -86,7 +87,8 @@ inline void run(int argc, char * argv[])
 
 	// Output simulation time
 	auto stop_sim = high_resolution_clock::now();
-	std::cout << "Execution time (s): " << (duration<double, std::milli>(stop_sim - start_sim).count())/1000.0 << "\n\n";//(stop_sim - start_sim) / double(CLOCKS_PER_SEC) << "\n\n";
+	if (sim.print)
+		std::cout << "Execution time (s): " << (duration<double, std::milli>(stop_sim - start_sim).count())/1000.0 << "\n\n";//(stop_sim - start_sim) / double(CLOCKS_PER_SEC) << "\n\n";
 
 	// Start output clock
 	auto start_out = high_resolution_clock::now();
@@ -114,7 +116,8 @@ if (mpi.size())
 	
 	// Output output time
 	auto stop_out = high_resolution_clock::now();
-	std::cout << "Output time (s): " << (duration<double, std::milli>(stop_out - start_out).count()) / 1000.0 << "\n\n";
+	if (sim.print)
+		std::cout << "Output time (s): " << (duration<double, std::milli>(stop_out - start_out).count()) / 1000.0 << "\n\n";
 }
 
 #ifdef Thesis_ENABLE_MPI

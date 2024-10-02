@@ -170,4 +170,6 @@ struct Simdat{
 	Settings	settings;
 
 	Utility		util;
+
+	bool print = true;
 };

@@ -22,7 +22,7 @@
 void Out::Progress(const Simdat& sim, const int itert) {
 	static int prog_print_last = 0;
 	int prog_now = int(10.0 * itert * sim.param.dt / sim.util.allScansEndTime);
-	if (prog_now != prog_print_last) {
+	if (sim.print && prog_now != prog_print_last) {
 		prog_print_last = prog_now;
 		if (prog_print_last <= 10) {
 			std::cout << "Time step: " << itert << "\t\t";
@@ -39,7 +39,7 @@ void Out::Progress(const Simdat& sim, const int itert) {
 void Out::Point_Progress(const Simdat& sim, const int p) {
 	static int prog_print_last = 0;
 	int prog_now = 10 * p / sim.domain.pnum;
-	if (prog_now != prog_print_last) {
+	if (sim.print && prog_now != prog_print_last) {
 		prog_print_last = prog_now;
 		std::cout << "% of Points: " << 10 * prog_print_last << "%" << "\n";
 	}
