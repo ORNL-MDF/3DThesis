@@ -54,6 +54,8 @@ public:
     // Name addition
     string name;
 
+    int size() { return nproc; }
+
     // Make x-y bounds for local domain
     void makeLocalBounds(Simdat& sim){
         

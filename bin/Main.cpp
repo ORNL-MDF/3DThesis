@@ -93,7 +93,8 @@ inline void run(int argc, char * argv[])
 
 std::string rank_name = "";
 #ifdef Thesis_ENABLE_MPI
-rank_name = "." + mpi.name;
+if (mpi.size())
+	rank_name = "." + mpi.name;
 #endif
 
 	if (sim.param.mode=="Solidification"){ 
