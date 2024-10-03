@@ -56,11 +56,13 @@ public:
 
     int size() { return nproc; }
 
+    void setPrint(Simdat& sim) {
+        // Update local rank printing
+        sim.print = rank == 0;
+    }
+
     // Make x-y bounds for local domain
     void makeLocalBounds(Simdat& sim){
-        // Update local rank
-        sim.print = rank == 0;
-
         // Global Decomposition
         const int I = dims[0];
         const int J = dims[1];

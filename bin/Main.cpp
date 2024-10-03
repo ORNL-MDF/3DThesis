@@ -54,16 +54,19 @@ inline void run(int argc, char * argv[])
 	// Initialize struct for simulation parameters
 	Simdat sim;
 
+#ifdef Thesis_ENABLE_MPI
+	// Initialize MPI
+	ThesisMPI mpi(MPI_COMM_WORLD);
+	mpi.setPrint(sim);
+#endif
+
 	// Get names of intput files
-	Init::GetFileNames(sim.files, inputFile);	
+	Init::GetFileNames(sim.files, inputFile, sim.print);	
 	
 	// Read input files and set simulation parameters
 	Init::ReadSimParams(sim);
 
 #ifdef Thesis_ENABLE_MPI
-	// Initialize MPI
-	ThesisMPI mpi(MPI_COMM_WORLD);
-
 	// Make local bounds and set local rank
 	mpi.makeLocalBounds(sim);
 #endif
