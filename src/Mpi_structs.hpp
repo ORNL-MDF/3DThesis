@@ -69,10 +69,10 @@ public:
         if (sim.param.mode=="Stork" || sim.settings.mpi_overlap){ 
             // Find local domain bounds (overlap for stork)
             i_min = ((sim.domain.xnum-1)*i)/I;
-            i_max = ((sim.domain.xnum-1)*(i+1))/I;
+            i_max = ((sim.domain.xnum-1)*(i+1))/I + (i!=(I-1));
 
             j_min = ((sim.domain.ynum-1)*j)/J;
-            j_max = ((sim.domain.ynum-1)*(j+1))/J;
+            j_max = ((sim.domain.ynum-1)*(j+1))/J + (j!=(J-1));
         }
         else{
             // Find local domain bounds (no overlap for else)
