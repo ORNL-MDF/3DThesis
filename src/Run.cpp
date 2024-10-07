@@ -680,6 +680,9 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 		// Calculate the maximum depth under points
 		Melt::calc_depth_max(depths, depths_max, liq_pts, grid, nodes, sim);
 
+		// Calculate meltpool dimensions
+		Melt::calc_mp_info(depths, liq_pts, grid, sim, t);	
+
 		//Output data
 		if (itert && (itert % sim.param.out_freq == 0)) {
 			grid.Output(sim, "Solidification."+Util::ZeroPadNumber(itert));

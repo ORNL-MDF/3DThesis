@@ -104,6 +104,10 @@ private:
 	vector<double>* RDF_tl = NULL; // liquid time for reduced data format - store if output
 	vector<double>* RDF_cr = NULL; // cooling rate for reduced data format - store if output 
 
+	double* MP_Width = NULL; // maximum meltpool width - store if output
+	double* MP_Length = NULL; // maximum meltpool length - store if output
+	double* MP_Depth = NULL; // maximum meltpool depth - store if output
+
 	vector<uint32_t> RRDF_idxs; // indices for doubly reduced data format - initilaize size if used
 	vector<float> RRDF_ts;  // times for doubly reduced data format - initilaize size if used
 	vector<float> RRDF_Ts; // temperatures for doubly reduced data format - initilaize size if used
@@ -235,6 +239,19 @@ public:
 				RDF_tl = new vector<double>[pnum]();
 				RDF_cr = new vector<double>[pnum]();
 			}
+			if (sim.output.mp_stats){
+				MP_Width = new double[pnum]();
+				MP_Length = new double[pnum]();
+				MP_Depth = new double[pnum]();
+				
+				outputNames.push_back("MP_width");
+				outputNames.push_back("MP_length");
+				outputNames.push_back("MP_depth");
+
+				outputFuncs.push_back(bind(&Grid::get_mpWidth, this, _1));
+				outputFuncs.push_back(bind(&Grid::get_mpLength, this, _1));
+				outputFuncs.push_back(bind(&Grid::get_mpDepth, this, _1));	
+			}
 		}
 
 		if (sim.param.mode == "Solidification" && sim.param.secondary == true) {
@@ -344,6 +361,10 @@ public:
 	vector<double> get_RDF_tl(const int p) { return RDF_tl[p]; }
 	vector<double> get_RDF_cr(const int p) { return RDF_cr[p]; }
 
+	double get_mpLength(const int p) { return MP_Length[p]; }
+	double get_mpWidth(const int p) { return MP_Width[p]; }
+	double get_mpDepth(const int p) { return MP_Depth[p]; }
+
 	vector<uint32_t>& get_RRDF_idxs() { return RRDF_idxs; }
 	vector<float>& get_RRDF_ts() { return RRDF_ts; }
 	vector<float>& get_RRDF_Ts() { return RRDF_Ts; }
@@ -387,4 +408,8 @@ public:
 	void add_RDF_cr(const double d, const int p) {
 		if (RDF_cr != NULL) { RDF_cr[p].push_back(d); } 
 	}
+
+	void set_mpLength(const double length, const int p) { MP_Length[p] = std::max(length, MP_Length[p]); }
+	void set_mpWidth(const double width, const int p) { MP_Width[p] = std::max(width, MP_Width[p]); }
+	void set_mpDepth(const double depth, const int p) { MP_Depth[p] = std::max(depth, MP_Depth[p]); }
 };
