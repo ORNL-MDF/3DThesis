@@ -132,6 +132,9 @@ struct Settings {
 	// Compute
 	int thnum;
 	bool use_PINT;
+
+	// MPI
+	bool mpi_overlap;
 };
 
 // Some utility variables
@@ -167,4 +170,6 @@ struct Simdat{
 	Settings	settings;
 
 	Utility		util;
+
+	bool print = true;
 };

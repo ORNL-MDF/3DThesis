@@ -104,6 +104,10 @@ private:
 	vector<double>* RDF_tl = NULL; // liquid time for reduced data format - store if output
 	vector<double>* RDF_cr = NULL; // cooling rate for reduced data format - store if output 
 
+	vector<uint32_t> RRDF_idxs; // indices for doubly reduced data format - initilaize size if used
+	vector<float> RRDF_ts;  // times for doubly reduced data format - initilaize size if used
+	vector<float> RRDF_Ts; // temperatures for doubly reduced data format - initilaize size if used
+
 	vector<string> outputNames; // what all to output ("x", "y", "z", etc.)
 	vector<function<double(const int)>> outputFuncs; // the functions for outputting the variables
 
@@ -158,6 +162,12 @@ public:
 			T_calc_flag = new bool[pnum]();
 			output_flag = new bool[pnum]();
 		}
+		
+		if (sim.param.mode == "Stork"){
+			RRDF_idxs.reserve(pnum);
+			RRDF_ts.reserve(2*pnum);
+			RRDF_Ts.reserve(16*pnum);
+		}
 
 		if (sim.param.mode == "Solidification") {
 			T_last = new double[pnum]();
@@ -210,7 +220,7 @@ public:
 				outputFuncs.push_back(bind(&Grid::get_eqFrac, this, _1));
 			}
 			if (sim.output.depth && sim.param.tracking == "Surface") {
-				depth = new double[pnum];
+				depth = new double[pnum]();
 				outputNames.push_back("depth");
 				outputFuncs.push_back(bind(&Grid::get_depth, this, _1));
 			}
@@ -257,6 +267,8 @@ public:
 	vector<vector<double>> Output_Table(const Simdat& sim);
 	void Output_T_hist(const Simdat&, const string);
 	void Output_RDF(const Simdat&, const string);
+	void Output_RRDF_csv(const Simdat&, const string);
+	void Output_RRDF_bin(const Simdat&, const string);
 
 	double Calc_T(const double, const Nodes&, const Simdat&, const bool, const int);				// Returns temperature 
 	void Solidify(const double, const Simdat&, const int);												// Solidifies point
@@ -332,6 +344,9 @@ public:
 	vector<double> get_RDF_tl(const int p) { return RDF_tl[p]; }
 	vector<double> get_RDF_cr(const int p) { return RDF_cr[p]; }
 
+	vector<uint32_t>& get_RRDF_idxs() { return RRDF_idxs; }
+	vector<float>& get_RRDF_ts() { return RRDF_ts; }
+	vector<float>& get_RRDF_Ts() { return RRDF_Ts; }
 
 	// Sets //
 	void set_T_calc_flag(const bool b, const int p) { if (T_calc_flag != NULL) { T_calc_flag[p] = b; } }

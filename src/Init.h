@@ -28,17 +28,30 @@ namespace Init {
 	void	Keywords_Lv1(vector<string>&, vector<int>&, const string&);
 
 	// Read for Keywords
-	void	Keywords_Lv2(vector<string>&, vector<vector<string>>&, vector<vector<string>>&, const string&);
-	void	Keywords_Lv2(vector<string>&, vector<vector<string>>&, vector<vector<double>>&, const string&);
+	void	Keywords_Lv2(vector<string>&, vector<vector<string>>&, vector<vector<string>>&, const string&, const bool);
+	void	Keywords_Lv2(vector<string>&, vector<vector<string>>&, vector<vector<double>>&, const string&, const bool);
+	void    catchPrint(const string&, const int, const bool);
 	
 	// Helps Set Values and Display Errors
-	void	SetValues(string&, string, string, string, int);
-	void	SetValues(int&,  string, int, string, int);
-	void	SetValues(bool&, string, bool, string, int);
-	void	SetValues(double&, string, double, string, int);
+	template <typename Default>
+	void setPrint(Default simDefault, string name, const int err, const bool print){
+		if (print) {
+			if (err == 1)
+				std::cout << "Error: " << name << " not read. Setting to default value " << simDefault << std::endl;
+			if (err == 2)
+				std::cout << "Fatal Error: " << name << " not read" << std::endl;
+		}
+	}
+
+	void	SetValues(string&, string, string, string, int, const bool);
+	void	SetValues(int&,  string, int, string, int, const bool);
+	void	SetValues(bool&, string, bool, string, int, const bool);
+	void	SetValues(double&, string, double, string, int, const bool);
+
+	void 	checkAsterisks(const std::string, const std::string, const std::string, const bool);
 
 	// Gets file names from the input file
-	void	GetFileNames(FileNames&, const string&);
+	void	GetFileNames(FileNames&, const string&, const bool);
 	void	MakeDataDirectory(const string&);
 	void	ReadSimParams(Simdat&);
 	
@@ -49,17 +62,17 @@ namespace Init {
 	void	FileRead_Mode_Solidification(Simdat&, const string&);
 
 	// Reads in all necessary simulation parameters
-	void	FileRead_Material(Material&, const string&);
-	void	FileRead_Beam(Beam&, const string&);
-	void	FileRead_Path(vector<path_seg>&, const string&);
+	void	FileRead_Material(Material&, const string&, const bool);
+	void	FileRead_Beam(Beam&, const string&, const bool);
+	void	FileRead_Path(vector<path_seg>&, const string&, const bool);
 
 	// Reads in fine tuned simulation parameters
-	void	FileRead_Domain(Domain&, const string&);
-	void	FileRead_Output(Output&, const string&);
-	void	FileRead_Settings(Settings&, const string&);
+	void	FileRead_Domain(Domain&, const string&, const bool);
+	void	FileRead_Output(Output&, const string&, const bool);
+	void	FileRead_Settings(Settings&, const string&, const bool);
 
 	// Reads in utility files (miscellaneous stuff for research)
-	void	FileRead_Points(Domain&, const string&);
+	void	FileRead_Points(Domain&, const string&, const bool);
 
 	// Set thermal diffusivity
 	void	SetDiffusivity(Material&);
@@ -69,7 +82,7 @@ namespace Init {
 	void	SetDomainParams(Domain&);
 
 	// For reading in multiple beams
-	void	FileRead_Beams(vector<Beam>&, const string&);
+	void	FileRead_Beams(vector<Beam>&, const string&, const bool);
 	// For reading in multiple paths
-	void	FileRead_Paths(vector<vector<path_seg>>&, const string&);
+	void	FileRead_Paths(vector<vector<path_seg>>&, const string&, const bool);
 }

@@ -47,5 +47,5 @@ namespace Run{
 	void Solidify_Surface(Grid&, const Simdat&);
 
 	//Special Mode for Stork Data
-	void Solidify_Stork(Grid&, const Simdat&);
+	void Stork(Grid&, const Simdat&);
 }

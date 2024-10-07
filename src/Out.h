@@ -24,7 +24,4 @@ namespace Out {
 	void Progress(const Simdat&, const int);
 	// Writes the progress of points to the console
 	void Point_Progress(const Simdat&, const int);
-	// Write the RRDF
-	void RRDF_csv(const Simdat&, const vector<uint32_t>&, const vector<float>&, const vector<float>&);
-	void RRDF_bin(const Simdat&, const vector<uint32_t>&, const vector<float>&, const vector<float>&);
 }

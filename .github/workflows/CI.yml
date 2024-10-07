@@ -22,6 +22,7 @@ jobs:
         cxx: ['g++', 'clang++']
         cmake_build_type: ['Debug', 'Release']
     runs-on: ubuntu-20.04
+    container: ghcr.io/ornl-mdf/ci-containers/ubuntu:latest
     steps:
       - name: Checkout 3DThesis
         uses: actions/checkout@v3
@@ -39,3 +40,4 @@ jobs:
       - name: Test 3DThesis
         run: |
           $HOME/3dthesis/bin/3DThesis
+          mpirun -n 2 --oversubscribe $HOME/3dthesis/bin/3DThesis

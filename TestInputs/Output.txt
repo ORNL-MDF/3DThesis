@@ -22,6 +22,7 @@ Solidification
 	depth	0
 	numMelt	0
 	RDF	0
+        MP_Stats 0
 }
 Solidification+
 {

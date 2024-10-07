@@ -1,0 +1,3 @@
+#pragma once
+
+#cmakedefine Thesis_ENABLE_MPI
