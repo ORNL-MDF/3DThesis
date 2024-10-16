@@ -22,7 +22,7 @@ The original release is available on [DOE Code](https://doi.org/10.11578/dc.2020
 This section shows how to create a custom simulation with all tunable parameters.
 If a necessary keyword is not included, often the program will default to values found in the test case. Note when editing files, it is important to begin each group with a brace `{`, as well as close each group `}` as in the example files.
 
-When run from the command line, an input file is optional (e.g. `./3DThesis ParamInput.txt`), defaulting to `TestInputs/ParamInput.txt`. If `Name` is set to `TestSim`, then the data for the simulation can be found at `Data/TestSim`. All the files under `Simulation` are necessary, the rest are optional.
+When run from the command line, an input file is optional (e.g. `./3DThesis ParamInput.txt`), defaulting to `TestInputs/ParamInput.txt`. If `Name` is set to `TestSim`, then the data for the simulation can be found at `TestSim/Data`. All the files under `Simulation` are necessary, the rest are optional.
 
 ### Simulation Files
 This set of files dictate everything having to do with the physics of the simulation, such as the material, the heat source, and the path of the heat source. All the inputs in this section are necessary.
@@ -66,7 +66,7 @@ This file contains all the material constants to be used by the simulation. The 
   - `a`
 
 #### Beam File
-This file contains information on the energy source, which is a volumetric gaussian. It should be noted that everything input here is equivalent to `√6 σ`. For example, if the standard deviation of an actual beam is `20 µm` and radially symmetric, both `Width_X` and `Width_Y` should be set to 48.9898e-6.
+This file contains information on the energy source, which is a volumetric gaussian. It should be noted that everything input here is equivalent to `√6 σ` as defined by the `D4σ` beam diameter. For example, if the standard deviation of an actual beam is `20 µm` and radially symmetric, both `Width_X` and `Width_Y` should be set to 48.9898e-6.
 
 Shape
 - `Width_X`: Width of the beam in the X direction (m)
@@ -75,7 +75,7 @@ Shape
 
 Intensity
 - `Power`: Power of energy source (W)
-- `Efficiency`: Absorption efficiency of beam; refer to literature for accurate values. Typically it is 0.35 for L-PBF and 0.85 for E-PBF.
+- `Efficiency`: Absorption efficiency of beam; refer to literature for accurate values. Typically it is 0.35 for laser powder bed fusion (PBF) and 0.85 for electron beam PBF.
 
 #### Path File
 This file dictate where and how the heat source travels. This file and all its components are necessary. An incomplete path file will cause failures. The format is different than other files and is in the form:
@@ -161,11 +161,10 @@ This file contains all the tunable parameters for how the simulation is run. Gen
   - `Compression`: Binary toggle (0-off, 1-on) for using a path compression algorithm. This is primary useful for LARGE scan paths (1 Mb or larger) with smooth-ish movement of the heat source (ex: raster or point raster) rather than discontinuous movement (ex: random point fill). It does so by compressing multiple nearby diffuse heat sources into a single source. There is a small loss in accuracy but a large speedup for certain simulations.
 - Compute
   - `MaxThreads`: Number of threads to use for the simulation.
-  - `PINT`: Allow for Parallel-IN-Time calculations. NOTE: This has been temporarily removed during the code overhaul
 
 ## 4. OutputFiles
 Analysis of 3dThesis results can be done with a variety of methods (e.g. Python), but quick visualization is possible with Paraview.
 
-First ensure that the run finished successfully for `TestInputs/ParamInput.txt` the data should be found in `Data\TestSim\TestSim.Final.csv`. To view this file in Paraview, open it through the folder icon, in the top left, and then click the apply button. A table of data should appear on the right side of the screen. To convert this data to something visual, click on the file name on the right side of the screen to highlight it, then apply the `Table to Points` filter under `Filters->Alphabetical`.
+First ensure that the run finished successfully for `TestInputs/ParamInput.txt` the data should be found in `TestSim/Data/TestSim.Final.csv`. To view this file in Paraview, open it through the folder icon, in the top left, and then click the apply button. A table of data should appear on the right side of the screen. To convert this data to something visual, click on the file name on the right side of the screen to highlight it, then apply the `Table to Points` filter under `Filters->Alphabetical`.
 
 On the left side, three dropdown menus should appear titled “X Column”, “Y Column”, and “Z Column”. Simply change these to be `x`, `y`, and `z`, click apply, and exit out of the tabular view of the data. Now at the top of the screen, locate the dropdown menu that says, “Solid Color.” Change this to `G` (the thermal solidification gradient). The point size and color scale can be changed using other options in the left menu (under the “Coloring” and “Styling” groups respectively).
