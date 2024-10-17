@@ -18,6 +18,12 @@ The original release is available on [DOE Code](https://doi.org/10.11578/dc.2020
 
 3dThesis is distributed under an [open source 3-clause BSD license](LICENSE).
 
+## Build
+3dThesis uses `make` to build. Options inside the `makefile` can be changed as needed for the local hardware. Run `make` from the commandline in order to build 3dThesis.
+
+## Run
+By default, 3dThesis will be built within `./build/application`. The input files described below can be modified as needed and then 3dThesis can be run on the commandline: `./build/application/3dThesis`
+
 ## Inputs
 This section shows how to create a custom simulation with all tunable parameters.
 If a necessary keyword is not included, often the program will default to values found in the test case. Note when editing files, it is important to begin each group with a brace `{`, as well as close each group `}` as in the example files.
