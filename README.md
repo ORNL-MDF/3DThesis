@@ -19,7 +19,7 @@ The original release is available on [DOE Code](https://doi.org/10.11578/dc.2020
 3dThesis is distributed under an [open source 3-clause BSD license](LICENSE).
 
 ## Build
-3dThesis requires a C++ compiler and OpenMP for on-node parallelism.
+3dThesis requires a C++ compiler and OpenMP for on-node parallelism. 3dThesis will optionally use MPI if available on the system.
 
 3dThesis primarily support CMake builds. A minimal example build and install looks like:
 ```
@@ -165,6 +165,7 @@ This file contains all variables which can be output. A value of 0 indicated to 
   - `eqFrac`: Equiaxed fraction
   - `RDF`: Export results in “Reduced Data Format” compatible with ExaCA
   - `numMelt`: Number of times a point melted and solidified
+  - `MP_Stats`: Output the maximum width and length of the melt pool at each point
 - Solidification+
   - `H`: Magnitude of the orthogonal differential change in the solidification gradient in the direction of the solidification gradient
   - `Hx`: x-component of normalized H
