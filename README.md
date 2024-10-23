@@ -83,6 +83,8 @@ Intensity
 - `Power`: Power of energy source (W)
 - `Efficiency`: Absorption efficiency of beam; refer to literature for accurate values. Typically it is 0.35 for laser powder bed fusion (PBF) and 0.85 for electron beam PBF.
 
+NOTE: To use multiple heat sources, use the * to denote the wildcard (ex: “Beam.*.txt”). The program will start at “Beam.1.txt” then “Beam.2.txt” and keep going until “Beam.x.txt” does not exist. “Beam.x.txt” would be used with the path parameters found in “Path.x.txt”
+
 #### Path File
 This file dictate where and how the heat source travels. This file and all its components are necessary. An incomplete path file will cause failures. The format is different than other files and is in the form:
 `Mode	X(mm)	Y(mm)	Z(mm)	Pmod	Vel(m/s)/Time(s)`
@@ -93,7 +95,9 @@ The Mode dictates how the heat source moves.
 	
 - `Pmod` is a power multiplier to the heat source. This is typically 0 or 1 to control the beam turning on and off. More advanced scan strategies have variable powers. In these cases, it’s generally best to let `Pmod` control the power and set the `Power` in the beam file to 1.
 
-Note: Make sure that before a line melt, the starting point is correct! A raster pattern is best represented by alternating mode 1 and 0 where mode 1 is only there to set the start point and would have a Pmod of 0 and a short value for Time(s).
+Make sure that before a line melt, the starting point is correct! A raster pattern is best represented by alternating mode 1 and 0 where mode 1 is only there to set the start point and would have a Pmod of 0 and a short value for Time(s).
+
+NOTE: To use multiple heat sources, use the * to denote the wildcard (ex: “Path.*.txt”). The program will start at “Path.1.txt” then “Path.2.txt” and keep going until “Path.x.txt” does not exist. “Path.x.txt” would be used with the beam parameters found in “Beam.x.txt”
 
 ### Option Files
 This set of files dictate everything having to do with the numerics of the simulation, such as the domain considered as well as various settings. These files are optional but it is highly recommended to understand how to change these for specific uses as they have a large impact on the speed and accuracy of the simulation. Default behavior is specified.
