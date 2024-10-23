@@ -19,7 +19,20 @@ The original release is available on [DOE Code](https://doi.org/10.11578/dc.2020
 3dThesis is distributed under an [open source 3-clause BSD license](LICENSE).
 
 ## Build
-3dThesis uses `make` to build. Options inside the `makefile` can be changed as needed for the local hardware. Run `make` from the commandline in order to build 3dThesis.
+3dThesis requires a C++ compiler and OpenMP for on-node parallelism.
+
+3dThesis primarily support CMake builds. A minimal example build and install looks like:
+```
+cd ./3DThesis
+cmake \
+    -B build \
+    -D CMAKE_INSTALL_PREFIX=install
+cmake --build build
+cmake --install build
+```
+An additional example is shown in example_build.sh
+
+3dThesis still supports `make`, but this support is planned to be removed. Options inside the `makefile` can be changed as needed for the local hardware. Run `make` from the commandline in order to build 3dThesis.
 
 ## Run
 By default, 3dThesis will be built within `./build/application`. The input files described below can be modified as needed and then 3dThesis can be run on the commandline: `./build/application/3dThesis`
