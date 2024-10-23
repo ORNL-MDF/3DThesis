@@ -255,3 +255,74 @@ void Melt::calc_depth_max(vector<int>& depths, vector<double>& depth_max, vector
 	}
 	return;
 }
+
+void Melt::calc_mp_info(const vector<int>& depths, const vector<int>& liq_pts, Grid& grid, const Simdat& sim, const double t){
+	// If not outputting, don't do
+	if (sim.output.mp_stats == 0) { return;}
+	
+	// This enables the starting search path segment to be quickly initialized each time. 
+	static int seg(1);
+
+	// Set reference just to first path
+	const vector<path_seg>& path = sim.paths[0];
+
+	// Keep incrementing up if t is greater than the end of the path segment but also below the end time of the scan
+	while ((t > path[seg].seg_time) && (seg + 1 < path.size())) { seg++; }
+	// Keep incrementing down if t is less than end of previous path segment
+	while ((t < path[seg - 1].seg_time) && (seg - 1 > 0)) { seg--; }
+
+	// Find angle and update time and angle vectors
+	double angle;
+	double x_0 = path[seg-1].sx;
+	double y_0 = path[seg-1].sy;
+	double x_1 = path[seg].sx;
+	double y_1 = path[seg].sy;
+	double dx = x_1 - x_0;
+	double dy = y_1 - y_0;
+	if (path[seg].smode == 1){angle = 0.0;}
+	else{angle = atan2(dy, dx);}
+	
+	// Calculate depths and widths
+	if (liq_pts.size() != 0 && path[seg].sqmod>0){
+
+		// Calculate rotated x,y of liquid points
+		double minRotX = std::numeric_limits<double>::max();
+		double maxRotX= std::numeric_limits<double>::lowest();
+		double minRotY = std::numeric_limits<double>::max();
+		double maxRotY = std::numeric_limits<double>::lowest();
+		for (const int& liq_pt:liq_pts){
+			const double x = grid.get_x(liq_pt);
+			const double y = grid.get_y(liq_pt);
+
+			const double x_rot = x*cos(angle) + y*sin(angle);
+			minRotX = std::min(x_rot, minRotX);
+	        maxRotX = std::max(x_rot, maxRotX);
+
+			const double y_rot = -x*sin(angle) + y*cos(angle);
+			minRotY = std::min(y_rot, minRotY);
+	        maxRotY = std::max(y_rot, maxRotY);
+		}
+
+		// Calculate width and depth
+		const double width = maxRotY - minRotY;
+		const double length = maxRotX - minRotX;
+		
+		// Get depth
+		const double depth = sim.domain.xres * (*std::max_element(depths.begin(), depths.end()));
+
+		// Now add to all relevant points
+		for (const int& liq_pt:liq_pts){
+			// Get i,j and <ij>
+			const int i = grid.get_i(liq_pt);
+			const int j = grid.get_j(liq_pt);
+			int dnum = i * sim.domain.ynum + j;
+			// For points in depth
+			for (int d=0;d<=depths[dnum];d++){
+				const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
+				grid.set_mpWidth(width, p_temp);
+				grid.set_mpLength(length, p_temp);
+				grid.set_mpDepth(depth, p_temp);
+			}
+		}
+	}
+}
