@@ -19,7 +19,20 @@ The original release is available on [DOE Code](https://doi.org/10.11578/dc.2020
 3dThesis is distributed under an [open source 3-clause BSD license](LICENSE).
 
 ## Build
-3dThesis uses `make` to build. Options inside the `makefile` can be changed as needed for the local hardware. Run `make` from the commandline in order to build 3dThesis.
+3dThesis requires a C++ compiler and OpenMP for on-node parallelism. 3dThesis will optionally use MPI if available on the system.
+
+3dThesis primarily support CMake builds. A minimal example build and install looks like:
+```
+cd ./3DThesis
+cmake \
+    -B build \
+    -D CMAKE_INSTALL_PREFIX=install
+cmake --build build
+cmake --install build
+```
+An additional example is shown in example_build.sh
+
+3dThesis still supports `make`, but this support is planned to be removed. Options inside the `makefile` can be changed as needed for the local hardware. Run `make` from the commandline in order to build 3dThesis.
 
 ## Run
 By default, 3dThesis will be built within `./build/application`. The input files described below can be modified as needed and then 3dThesis can be run on the commandline: `./build/application/3dThesis`
@@ -152,6 +165,7 @@ This file contains all variables which can be output. A value of 0 indicated to 
   - `eqFrac`: Equiaxed fraction
   - `RDF`: Export results in “Reduced Data Format” compatible with ExaCA
   - `numMelt`: Number of times a point melted and solidified
+  - `MP_Stats`: Output the maximum width and length of the melt pool at each point
 - Solidification+
   - `H`: Magnitude of the orthogonal differential change in the solidification gradient in the direction of the solidification gradient
   - `Hx`: x-component of normalized H
@@ -172,7 +186,7 @@ This file contains all the tunable parameters for how the simulation is run. Gen
 - Compute
   - `MaxThreads`: Number of threads to use for the simulation.
 
-## 4. OutputFiles
+## Outputs
 Analysis of 3dThesis results can be done with a variety of methods (e.g. Python), but quick visualization is possible with Paraview.
 
 First ensure that the run finished successfully for `TestInputs/ParamInput.txt` the data should be found in `TestSim/Data/TestSim.Final.csv`. To view this file in Paraview, open it through the folder icon, in the top left, and then click the apply button. A table of data should appear on the right side of the screen. To convert this data to something visual, click on the file name on the right side of the screen to highlight it, then apply the `Table to Points` filter under `Filters->Alphabetical`.
