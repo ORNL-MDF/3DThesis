@@ -186,7 +186,7 @@ This file contains all the tunable parameters for how the simulation is run. Gen
 - Compute
   - `MaxThreads`: Number of threads to use for the simulation.
 
-## 4. OutputFiles
+## Outputs
 Analysis of 3dThesis results can be done with a variety of methods (e.g. Python), but quick visualization is possible with Paraview.
 
 First ensure that the run finished successfully for `TestInputs/ParamInput.txt` the data should be found in `TestSim/Data/TestSim.Final.csv`. To view this file in Paraview, open it through the folder icon, in the top left, and then click the apply button. A table of data should appear on the right side of the screen. To convert this data to something visual, click on the file name on the right side of the screen to highlight it, then apply the `Table to Points` filter under `Filters->Alphabetical`.
