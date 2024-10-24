@@ -52,6 +52,7 @@ namespace Melt {
 	// Calculate meltpool statistics 
 	// NOTE:: Will not work well when spatially decomposed 
 	// NOTE:: Will not work well with multiple beams
-	void calc_mp_info(const vector<int>&, const vector<int>&, Grid&, const Simdat&, const double);
+	void calc_mp_info(const vector<int>&, Grid&, const Simdat&, const double);
+	void local_neighbor_check(vector<int>&, vector<int>&, Grid&,const Simdat&);
 }
 

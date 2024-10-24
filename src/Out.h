@@ -36,8 +36,6 @@
 #include "DataStructs.h"
 #include "Grid.h"
 
-#include <deque>
-
 using std::vector;
 using std::string;
 
