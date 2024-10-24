@@ -256,73 +256,190 @@ void Melt::calc_depth_max(vector<int>& depths, vector<double>& depth_max, vector
 	return;
 }
 
-void Melt::calc_mp_info(const vector<int>& depths, const vector<int>& liq_pts, Grid& grid, const Simdat& sim, const double t){
+void Melt::calc_mp_info(const vector<int>& depths, Grid& grid, const Simdat& sim, const double t){
 	// If not outputting, don't do
 	if (sim.output.mp_stats == 0) { return;}
 	
+	// This enables each segment to have its own local pools
+	static vector<vector<int>> multi_local_liq_pools;
+	static vector<int> multi_segs;
+
 	// This enables the starting search path segment to be quickly initialized each time. 
-	static int seg(1);
+	static int seg(0);
 
 	// Set reference just to first path
 	const vector<path_seg>& path = sim.paths[0];
 
 	// Keep incrementing up if t is greater than the end of the path segment but also below the end time of the scan
-	while ((t > path[seg].seg_time) && (seg + 1 < path.size())) { seg++; }
-	// Keep incrementing down if t is less than end of previous path segment
-	while ((t < path[seg - 1].seg_time) && (seg - 1 > 0)) { seg--; }
+	while ((t > path[seg].seg_time) && (seg + 1 < path.size())) { 
+		// Increment segment
+		seg++; 
+		// Add test points (if power is on)
+		if (path[seg].sqmod>0){
+			// What segment information should be used?
+			int seg_pt;
+			if (path[seg].smode==0){seg_pt=seg-1;}
+			else{seg_pt=seg;}
+			const int x_grid_num = (int)((path[seg_pt].sx - sim.domain.xmin) / sim.domain.xres);
+			const int y_grid_num = (int)((path[seg_pt].sy - sim.domain.ymin) / sim.domain.yres);
+			const int z_grid_num = (int)((path[seg_pt].sz - sim.domain.zmin) / sim.domain.zres);
 
-	// Find angle and update time and angle vectors
-	double angle;
-	double x_0 = path[seg-1].sx;
-	double y_0 = path[seg-1].sy;
-	double x_1 = path[seg].sx;
-	double y_1 = path[seg].sy;
-	double dx = x_1 - x_0;
-	double dy = y_1 - y_0;
-	if (path[seg].smode == 1){angle = 0.0;}
-	else{angle = atan2(dy, dx);}
+			// Vector of test points
+			vector<int> test_pts;
+			for (int dx=0;dx<=1;dx++){
+				for (int dy=0;dy<=1;dy++){
+					const int p = (z_grid_num) + sim.domain.znum * (y_grid_num + dy) + sim.domain.znum * sim.domain.ynum * (x_grid_num + dx);
+					test_pts.push_back(p);
+				}
+			}
+
+			// Add to final stuff
+			multi_local_liq_pools.push_back(test_pts);
+			multi_segs.push_back(seg);	
+		}
+	}
+
+	// If we are on the same seg (and line melt), add current position too
+	if (multi_segs.size()){
+		if (multi_segs.back()==seg && path[seg].smode==0){
+			vector<int> local_test_pts = multi_local_liq_pools.back();
+			int_seg current_beam = Util::GetBeamLoc(t, seg, path, sim);
+			const int x_grid_num = (int)((current_beam.xb - sim.domain.xmin) / sim.domain.xres);
+			const int y_grid_num = (int)((current_beam.yb - sim.domain.ymin) / sim.domain.yres);
+			const int z_grid_num = (int)((current_beam.zb - sim.domain.zmin) / sim.domain.zres);
+
+			// Vector of test points
+			for (int dx=0;dx<=1;dx++){
+				for (int dy=0;dy<=1;dy++){
+					const int p = (z_grid_num) + sim.domain.znum * (y_grid_num + dy) + sim.domain.znum * sim.domain.ynum * (x_grid_num + dx);
+					local_test_pts.push_back(p);
+				}
+			}
+
+			multi_local_liq_pools.back() = local_test_pts;
+		}
+	}
+	else{
+		return;
+	}
 	
-	// Calculate depths and widths
-	if (liq_pts.size() != 0 && path[seg].sqmod>0){
-
-		// Calculate rotated x,y of liquid points
-		double minRotX = std::numeric_limits<double>::max();
-		double maxRotX= std::numeric_limits<double>::lowest();
-		double minRotY = std::numeric_limits<double>::max();
-		double maxRotY = std::numeric_limits<double>::lowest();
-		for (const int& liq_pt:liq_pts){
-			const double x = grid.get_x(liq_pt);
-			const double y = grid.get_y(liq_pt);
-
-			const double x_rot = x*cos(angle) + y*sin(angle);
-			minRotX = std::min(x_rot, minRotX);
-	        maxRotX = std::max(x_rot, maxRotX);
-
-			const double y_rot = -x*sin(angle) + y*cos(angle);
-			minRotY = std::min(y_rot, minRotY);
-	        maxRotY = std::max(y_rot, maxRotY);
+	// For all remaining segments
+	const int init_index = multi_segs.size()-1;
+	for (int multi_num=init_index; multi_num>=0; multi_num--){
+		
+		// Get local values (front to back)
+		int local_seg = multi_segs[multi_num];	
+		vector<int>& local_test_pts = multi_local_liq_pools[multi_num];
+		
+		// Iterative loop from current point to find local, liquid points
+		vector<int> local_liq_pts;
+		while (local_test_pts.size()){
+			local_neighbor_check(local_test_pts, local_liq_pts, grid, sim);
 		}
 
-		// Calculate width and depth
-		const double width = maxRotY - minRotY;
-		const double length = maxRotX - minRotX;
-		
-		// Get depth
-		const double depth = sim.domain.xres * (*std::max_element(depths.begin(), depths.end()));
+		// If no liquid points
+		if (local_liq_pts.size()==0){
+			// Erase data
+			multi_segs.erase(multi_segs.begin()+multi_num);
+			multi_local_liq_pools.erase(multi_local_liq_pools.begin()+multi_num);
+		}
+		else{
+			// Set test points next iteration to current pool
+			local_test_pts = local_liq_pts;
 
-		// Now add to all relevant points
-		for (const int& liq_pt:liq_pts){
-			// Get i,j and <ij>
-			const int i = grid.get_i(liq_pt);
-			const int j = grid.get_j(liq_pt);
-			int dnum = i * sim.domain.ynum + j;
-			// For points in depth
-			for (int d=0;d<=depths[dnum];d++){
-				const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
-				grid.set_mpWidth(width, p_temp);
-				grid.set_mpLength(length, p_temp);
-				grid.set_mpDepth(depth, p_temp);
+			// Find angle and update time and angle vectors
+			double angle;
+			double x_0 = path[local_seg-1].sx;
+			double y_0 = path[local_seg-1].sy;
+			double x_1 = path[local_seg].sx;
+			double y_1 = path[local_seg].sy;
+			double dx = x_1 - x_0;
+			double dy = y_1 - y_0;
+			if (path[local_seg].smode == 1){angle = 0.0;}
+			else{angle = atan2(dy, dx);}
+
+			// Calculate rotated x,y of liquid points
+			double minRotX = std::numeric_limits<double>::max();
+			double maxRotX= std::numeric_limits<double>::lowest();
+			double minRotY = std::numeric_limits<double>::max();
+			double maxRotY = std::numeric_limits<double>::lowest();
+			for (const int& liq_pt:local_liq_pts){
+				const double x = grid.get_x(liq_pt);
+				const double y = grid.get_y(liq_pt);
+
+				const double x_rot = x*cos(angle) + y*sin(angle);
+				minRotX = std::min(x_rot, minRotX);
+				maxRotX = std::max(x_rot, maxRotX);
+
+				const double y_rot = -x*sin(angle) + y*cos(angle);
+				minRotY = std::min(y_rot, minRotY);
+				maxRotY = std::max(y_rot, maxRotY);
+			}
+
+			// Calculate width and depth
+			const double width = maxRotY - minRotY;
+			const double length = maxRotX - minRotX;
+			
+			// Get depth
+			const double depth = sim.domain.xres * (*std::max_element(depths.begin(), depths.end()));
+
+			// Now add to all relevant points
+			for (const int& liq_pt:local_liq_pts){
+				// Get i,j and <ij>
+				const int i = grid.get_i(liq_pt);
+				const int j = grid.get_j(liq_pt);
+				int dnum = i * sim.domain.ynum + j;
+				// For points in depth
+				for (int d=0;d<=depths[dnum];d++){
+					const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
+					grid.set_mpWidth(width, p_temp);
+					grid.set_mpLength(length, p_temp);
+					grid.set_mpDepth(depth, p_temp);
+				}
+			}
+		}		
+	}
+}
+
+void Melt::local_neighbor_check(vector<int>& test_pts, vector<int>& liq_pts, Grid& grid, const Simdat& sim) {
+	
+	vector<int> test_tmp;
+	
+	//Find neighbors in test_pts for checking
+	for (int it = 0; it < test_pts.size(); it++) {
+		//Get i, j, k location of current point, then construct array of neighbors
+		const int p = test_pts[it];
+		const int i = grid.get_i(p);
+		const int j = grid.get_j(p);
+		const int k = grid.get_k(p);
+
+		const int n = 1;
+		std::vector <int> ijkminmax;
+		ijkminmax.push_back(n - i);
+		ijkminmax.push_back(i + 1 + n - sim.domain.xnum);
+		ijkminmax.push_back(n - j);
+		ijkminmax.push_back(j + 1 + n - sim.domain.ynum);
+		ijkminmax.push_back(n - k);
+		ijkminmax.push_back(k + 1 + n - sim.domain.znum);
+
+		for (int temp = 0; temp < ijkminmax.size(); temp++) {
+			if (ijkminmax[temp] < 0) { ijkminmax[temp] = 0; }
+		}
+
+		vector<int> nbs;
+		int p_temp;
+		for (int di = -n + ijkminmax[0]; di <= (n - ijkminmax[1]); di++) {
+			for (int dj = -n + ijkminmax[2]; dj <= (n - ijkminmax[3]); dj++) {
+				p_temp = Util::ijk_to_p(i + di, j + dj, k, sim); 
+				if (grid.get_T_calc_flag(p_temp) && grid.get_T(p_temp)>=sim.material.T_liq) {
+					grid.set_T_calc_flag(false, p_temp);
+					test_tmp.push_back(p_temp);
+					liq_pts.push_back(p_temp);
+				}
 			}
 		}
 	}
+
+	test_pts.clear();
+	test_pts = test_tmp;
 }

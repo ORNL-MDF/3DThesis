@@ -12,11 +12,15 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <deque>
+#include <list>
 #include <climits>
 #include <cfloat>
 
 using std::vector;
 using std::string;
+using std::deque;
+using std::list;
 
 #define PI 3.14159265358979323846
 
