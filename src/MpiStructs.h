@@ -104,6 +104,8 @@ public:
         sim.domain.ymin = ymin; sim.domain.ymax = ymax;
         sim.domain.ynum = 1 + int(0.5 + (sim.domain.ymax - sim.domain.ymin) / sim.domain.yres);
 		sim.domain.ymax = sim.domain.ymin + (sim.domain.ynum - 1) * sim.domain.yres;
+
+        sim.domain.pnum = sim.domain.xnum*sim.domain.ynum*sim.domain.znum;
     }
 };
 
