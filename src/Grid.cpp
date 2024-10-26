@@ -196,8 +196,8 @@ void Grid::Output_RRDF_csv(const Simdat& sim, const string name){
 
 	// Set references to data
 	const vector<uint32_t>& idxs = RRDF_idxs;
-	const vector<float>& ts = RRDF_Ts;
-	const vector<float>& Ts = RRDF_ts;
+	const vector<float>& ts = RRDF_ts;
+	const vector<float>& Ts = RRDF_Ts;
 
 	// Get header info
 	const uint32_t size = ts.size()/2;
@@ -234,8 +234,8 @@ void Grid::Output_RRDF_bin(const Simdat& sim, const string name){
 	
 	// Set references to data
 	const vector<uint32_t>& idxs = RRDF_idxs;
-	const vector<float>& ts = RRDF_Ts;
-	const vector<float>& Ts = RRDF_ts;
+	const vector<float>& ts = RRDF_ts;
+	const vector<float>& Ts = RRDF_Ts;
 
 	// Get header info
 	const uint32_t size = ts.size()/2;

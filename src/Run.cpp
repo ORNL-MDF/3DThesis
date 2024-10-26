@@ -56,9 +56,6 @@ void Run::Simulate(Grid& grid, const Simdat& sim) {
 	else if (sim.param.mode == "Solidification") { 
 		Run::Solidify(grid, sim); 
 	}
-	else if (sim.param.mode == "Stork"){
-		Run::Stork(grid, sim);
-	}
 	else { 
 		std::cout << "ERROR: Unrecognized mode: " << sim.param.mode << "\n"; 
 	}
@@ -423,6 +420,9 @@ void Run::Solidify(Grid& grid, const Simdat& sim){
 	}
 	else if (sim.param.tracking == "Surface") {
 		Run::Solidify_Surface(grid, sim);
+	}
+	else if (sim.param.tracking == "Stork"){
+		Run::Stork(grid, sim);
 	}
 	else {
 		std::cout << "ERROR: Unrecognized solidfication tracking: " << sim.param.tracking << "\n";

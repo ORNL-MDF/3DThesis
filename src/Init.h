@@ -1,5 +1,5 @@
 //This software has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. 
-//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) – Transformer Resilience and Advanced Components (TRAC) Program.
+//Research was co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) ï¿½ Transformer Resilience and Advanced Components (TRAC) Program.
 
 /*Copyright 2019 UT-Battelle, LLC
 *
@@ -70,6 +70,7 @@ namespace Init {
 	void	FileRead_Mode(Simdat&, const string&);
 	void	FileRead_Mode_Snapshot(Simdat&, const string&);
 	void	FileRead_Mode_Solidification(Simdat&, const string&);
+	void	FileRead_Mode_Stork(Simdat&, const string&);
 
 	// Reads in all necessary simulation parameters
 	void	FileRead_Material(Material&, const string&);
