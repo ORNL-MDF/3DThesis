@@ -1,0 +1,4 @@
+Mode	X(mm)	Y(mm)	Z(mm)	Pmod	Time(s)
+1	0	0	0	0	0
+0	5	1	0	1	1
+
