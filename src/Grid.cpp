@@ -107,7 +107,7 @@ void Grid::Output_T_hist(const Simdat& sim, const string name) {
 		// Create datafile with list of points and their coordinates
 		std::ofstream datafile;
 		datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-		string out_file = sim.files.dataDir + "/" + sim.files.name + ".T_hist.csv";
+		string out_file = sim.files.dataDir + "/" + sim.files.name + name + ".csv";
 		try {
 			datafile.open(out_file.c_str());
 			datafile << "x,y,z";
