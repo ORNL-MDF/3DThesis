@@ -185,12 +185,14 @@ double Util::GetRefTime(const double tpp, const int seg, const vector<path_seg>&
 int_seg	Util::GetBeamLoc(const double time, const int seg, const vector<path_seg>& path, const Simdat& sim) {
 
 	int_seg current_seg;
-	if (path[seg].smode) {	//Location calculation for spot mode
+	//Location calculation for spot mode
+	if (path[seg].smode) {	
 		current_seg.xb = path[seg].sx;
 		current_seg.yb = path[seg].sy;
 		current_seg.zb = path[seg].sz;
 	}
-	else {							//Location calculation for line mode
+	//Location calculation for line mode
+	else {							
 		const double dx = path[seg].sx - path[seg - 1].sx;
 		const double dy = path[seg].sy - path[seg - 1].sy;
 		const double dz = path[seg].sz - path[seg - 1].sz;

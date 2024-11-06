@@ -11,6 +11,7 @@
 
 #include "Grid.h"
 #include "Out.h"
+#include "Util.h"
 
 void Grid::InitializeGridPoints(const Simdat& sim) {
 	if (sim.domain.customPoints) {
@@ -101,36 +102,72 @@ void Grid::Output_T_hist(const Simdat& sim, const string name) {
 	// If T_hist isn't ouput: return
 	if (T_hist == NULL) { return; }
 
-	// Create datafile with list of points and their coordinates
-	std::ofstream datafile;
-	datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-	string out_file = sim.files.dataDir + "/" + sim.files.name + ".Points.csv";
-	try {
-		datafile.open(out_file.c_str());
-		datafile << "p,x,y,z\n";
-		for (int p = 0; p < sim.domain.pnum; p++) {
-			if (get_output_flag(p)) {
-				datafile << p << "," << get_x(p) << "," << get_y(p) << "," << get_z(p) << "\n";
+	// If the points have the same times
+	if (sim.param.tracking=="None"){
+		// Create datafile with list of points and their coordinates
+		std::ofstream datafile;
+		datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+		string out_file = sim.files.dataDir + "/" + sim.files.name + name + ".csv";
+		try {
+			datafile.open(out_file.c_str());
+			datafile << "x,y,z";
+			const int max_tnum = get_t_hist(0).size();
+			const int t_width = 1+static_cast<int>(1+log10(max_tnum));
+			// for (int tnum=0;tnum<get_t_hist(0).size();tnum++){"t"+Util::ZeroPadNumber(tnum,t_width);}
+			for (int tnum=0;tnum<max_tnum;tnum++){
+				datafile<< ","+std::to_string(get_t_hist(0)[tnum]);
+			}
+			// Newline
+			datafile << "\n";
+			// Output point information
+			for (int p = 0; p < sim.domain.pnum; p++) {
+				// x-y-z info
+				datafile << get_x(p) << "," << get_y(p) << "," << get_z(p);
+				// Temperatures 
+				for (int tnum=0;tnum<max_tnum;tnum++){
+					datafile<< ","+std::to_string(get_T_hist(p)[tnum]);
+				}
+				// Newline
+				datafile <<  "\n";
 			}
 		}
+		catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
+		datafile.close();
 	}
-	catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
-	datafile.close();
-
-	for (int p = 0; p < sim.domain.pnum; p++) {
-		if (get_output_flag(p)) {
-			out_file = sim.files.dataDir + "/" + sim.files.name + ".T_hist." + to_string(p) + ".csv";
-			try {
-				datafile.open(out_file.c_str());
-				datafile << "t,T\n";
-				for (int e = 0; e < get_t_hist(p).size(); e++) {
-					{
-						datafile << get_t_hist(p)[e] << "," << get_T_hist(p)[e] << "\n";
-					}
+	// If the points have different times
+	else{
+		// Create datafile with list of points and their coordinates
+		std::ofstream datafile;
+		datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+		string out_file = sim.files.dataDir + "/" + sim.files.name + ".Points.csv";
+		try {
+			datafile.open(out_file.c_str());
+			datafile << "p,x,y,z\n";
+			for (int p = 0; p < sim.domain.pnum; p++) {
+				if (get_output_flag(p)) {
+					datafile << p << "," << get_x(p) << "," << get_y(p) << "," << get_z(p) << "\n";
 				}
 			}
-			catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
-			datafile.close();
+		}
+		catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
+		datafile.close();
+
+		// Write files for each point
+		for (int p = 0; p < sim.domain.pnum; p++) {
+			if (get_output_flag(p)) {
+				out_file = sim.files.dataDir + "/" + sim.files.name + ".T_hist." + to_string(p) + ".csv";
+				try {
+					datafile.open(out_file.c_str());
+					datafile << "t,T\n";
+					for (int e = 0; e < get_t_hist(p).size(); e++) {
+						{
+							datafile << get_t_hist(p)[e] << "," << get_T_hist(p)[e] << "\n";
+						}
+					}
+				}
+				catch (const std::ofstream::failure& e) { std::cout << "Exception writing data file, check that Data directory exists\n"; }
+				datafile.close();
+			}
 		}
 	}
 
