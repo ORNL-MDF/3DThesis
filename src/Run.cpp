@@ -744,8 +744,8 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 
 	// Get vectors to store data into
 	vector<uint32_t>& idxs = grid.get_RRDF_idxs();
-	vector<float>& ts = grid.get_RRDF_ts();
-	vector<float>& Ts = grid.get_RRDF_Ts();
+	vector<double>& ts = grid.get_RRDF_ts();
+	vector<double>& Ts = grid.get_RRDF_Ts();
 
 	// Vector to store relevant C's in
 	vector<int> c_relevant;
@@ -1002,8 +1002,8 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 			#pragma omp parallel num_threads(sim.settings.thnum)
 			{
 				vector<uint32_t> th_idxs;
-				vector<float> th_ts;
-				vector<float> th_Ts;
+				vector<double> th_ts;
+				vector<double> th_Ts;
 				#pragma omp for schedule(static)
 				for (int i=0; i<c_relevant.size();i++){
 					// get <i,j,k> of cell
@@ -1020,7 +1020,7 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 					th_ts.push_back(t);
 					// Loop over cell vertices to calculate temperatures
 					int n=0;
-					vector<float> temp_Ts(16);
+					vector<double> temp_Ts(16);
 					for (int di=0;di<2;di++){
 						for (int dj=0;dj<2;dj++){
 							for (int dk=0;dk<2;dk++){
