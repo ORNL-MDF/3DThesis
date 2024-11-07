@@ -196,14 +196,14 @@ void Grid::Output_RRDF_csv(const Simdat& sim, const string name){
 
 	// Set references to data
 	const vector<uint32_t>& idxs = RRDF_idxs;
-	const vector<float>& ts = RRDF_ts;
-	const vector<float>& Ts = RRDF_Ts;
+	const vector<double>& ts = RRDF_ts;
+	const vector<double>& Ts = RRDF_Ts;
 
 	// Get header info
 	const uint32_t size = ts.size()/2;
 	const uint32_t extent[3] = {static_cast<uint32_t>(sim.domain.xnum), static_cast<uint32_t>(sim.domain.ynum), static_cast<uint32_t>(sim.domain.znum)};
-	const float floats[5] = {static_cast<float>(sim.domain.xmin), static_cast<float>(sim.domain.ymin), static_cast<float>(sim.domain.zmin), static_cast<float>(sim.domain.xres), static_cast<float>(sim.material.T_liq)};
-
+	const double doubles[5] = {static_cast<double>(sim.domain.xmin), static_cast<double>(sim.domain.ymin), static_cast<double>(sim.domain.zmin), static_cast<double>(sim.domain.xres), static_cast<double>(sim.material.T_liq)};	
+	
 	// Output CSV
 	std::ofstream datafile;
 	datafile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
@@ -230,17 +230,17 @@ void Grid::Output_RRDF_csv(const Simdat& sim, const string name){
 void Grid::Output_RRDF_bin(const Simdat& sim, const string name){
 	
 	// Make file name
-	const string binFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".bin";
+	const string binFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".mdf";
 	
 	// Set references to data
 	const vector<uint32_t>& idxs = RRDF_idxs;
-	const vector<float>& ts = RRDF_ts;
-	const vector<float>& Ts = RRDF_Ts;
+	const vector<double>& ts = RRDF_ts;
+	const vector<double>& Ts = RRDF_Ts;
 
 	// Get header info
 	const uint32_t size = ts.size()/2;
 	const uint32_t extent[3] = {static_cast<uint32_t>(sim.domain.xnum), static_cast<uint32_t>(sim.domain.ynum), static_cast<uint32_t>(sim.domain.znum)};
-	const float floats[5] = {static_cast<float>(sim.domain.xmin), static_cast<float>(sim.domain.ymin), static_cast<float>(sim.domain.zmin), static_cast<float>(sim.domain.xres), static_cast<float>(sim.material.T_liq)};	
+	const double doubles[5] = {static_cast<double>(sim.domain.xmin), static_cast<double>(sim.domain.ymin), static_cast<double>(sim.domain.zmin), static_cast<double>(sim.domain.xres), static_cast<double>(sim.material.T_liq)};	
 	
 	// Open up binary file
 	std::ofstream os(binFile, std::ios::binary);
@@ -248,12 +248,12 @@ void Grid::Output_RRDF_bin(const Simdat& sim, const string name){
 	// Write header to binary file	
 	os.write((const char*)&size, sizeof(uint32_t));
 	os.write((const char*)&extent, 3 * sizeof(uint32_t));
-	os.write((const char*)&floats, 5 * sizeof(float));
+	os.write((const char*)&doubles, 5 * sizeof(double));
 	
 	// Write vectors to binary file
 	os.write((const char*)&idxs[0], 3 * size * sizeof(uint32_t));
-	os.write((const char*)&ts[0], 2 * size * sizeof(float));
-	os.write((const char*)&Ts[0], 16 * size * sizeof(float));
+	os.write((const char*)&ts[0], 2 * size * sizeof(double));
+	os.write((const char*)&Ts[0], 16 * size * sizeof(double));
 	
 	// Close binary file
 	os.close();

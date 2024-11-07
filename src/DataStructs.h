@@ -38,7 +38,6 @@
 #include <deque>
 #include <list>
 #include <climits>
-#include <cfloat>
 
 using std::vector;
 using std::string;

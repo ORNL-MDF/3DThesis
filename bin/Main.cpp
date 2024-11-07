@@ -88,8 +88,8 @@ int main(int argc, char * argv[]) {
 		}
 		if (sim.param.mode=="Solidification" && sim.param.tracking=="Stork"){
 			// Output RRDF
-			grid.Output_RRDF_csv(sim, "RRDF." + mpi.name);
-			//grid.Output_RRDF_bin(sim, "RRDF." + mpi.name);
+			//grid.Output_RRDF_csv(sim, "RRDF." + mpi.name);
+			grid.Output_RRDF_bin(sim, "RRDF." + mpi.name);
 		}											
 
 		// Output output time

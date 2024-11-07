@@ -97,8 +97,8 @@ private:
 	double* MP_Depth = NULL; // maximum meltpool depth - store if output
 
 	vector<uint32_t> RRDF_idxs; // indices for doubly reduced data format - initilaize size if used
-	vector<float> RRDF_ts;  // times for doubly reduced data format - initilaize size if used
-	vector<float> RRDF_Ts; // temperatures for doubly reduced data format - initilaize size if used
+	vector<double> RRDF_ts;  // times for doubly reduced data format - initilaize size if used
+	vector<double> RRDF_Ts; // temperatures for doubly reduced data format - initilaize size if used
 
 	vector<string> outputNames; // what all to output ("x", "y", "z", etc.)
 	vector<function<double(const int)>> outputFuncs; // the functions for outputting the variables
@@ -354,8 +354,8 @@ public:
 	double get_mpDepth(const int p) { return MP_Depth[p]; }
 
 	vector<uint32_t>& get_RRDF_idxs() { return RRDF_idxs; }
-	vector<float>& get_RRDF_ts() { return RRDF_ts; }
-	vector<float>& get_RRDF_Ts() { return RRDF_Ts; }
+	vector<double>& get_RRDF_ts() { return RRDF_ts; }
+	vector<double>& get_RRDF_Ts() { return RRDF_Ts; }
 
 	// Sets //
 	void set_T_calc_flag(const bool b, const int p) { if (T_calc_flag != NULL) { T_calc_flag[p] = b; } }

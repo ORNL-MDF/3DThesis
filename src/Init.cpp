@@ -37,7 +37,6 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <cfloat>
 #include <climits>
 
 #include "DataStructs.h"
