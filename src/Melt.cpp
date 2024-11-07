@@ -141,7 +141,7 @@ void Melt::neighbor_check(vector<int>& test_pts, vector<int>& liq_pts, vector<in
 					for (int dj=-1;dj<=1;dj++){
 						const int ni = i + di;
 						const int nj = j + dj;
-						if (ni<0 || (ni+1)>=sim.domain.xnum || nj<0 || (nj+1)>=sim.domain.ynum){
+						if (ni<0 || ni>(sim.domain.xnum-1) || nj<0 || nj>(sim.domain.ynum-1)){
 							continue;
 						}
 						const int p_temp = Util::ijk_to_p(ni, nj, k, sim); 
@@ -170,7 +170,7 @@ void Melt::neighbor_check(vector<int>& test_pts, vector<int>& liq_pts, vector<in
 							const int ni = i + di;
 							const int nj = j + dj;
 							const int nk = k + dk;
-							if (ni<0 || (ni+1)>=sim.domain.xnum || nj<0 || (nj+1)>=sim.domain.ynum || nk<0){
+							if (ni<0 || ni>(sim.domain.xnum-1) || nj<0 || nj>(sim.domain.ynum-1) || nk<0){
 								continue;
 							}
 							const int p_temp = Util::ijk_to_p(ni, nj, nk, sim); 
@@ -470,7 +470,7 @@ void Melt::local_neighbor_check(vector<int>& test_pts, vector<int>& liq_pts, Gri
 			for (int dj=-1;dj<=1;dj++){
 				const int ni = i + di;
 				const int nj = j + dj;
-				if (ni<0 || (ni+1)>=sim.domain.xnum || nj<0 || (nj+1)>=sim.domain.ynum){
+				if (ni<0 || ni>(sim.domain.xnum-1) || nj<0 || nj>(sim.domain.ynum-1)){
 					continue;
 				}
 				const int p_temp = Util::ijk_to_p(ni, nj, k, sim); 
