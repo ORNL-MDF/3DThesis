@@ -175,5 +175,8 @@ struct Simdat{
 
 	Utility		util;
 
+	// Should this rank print?
 	bool print = true;
+	// Is this running with MPI (actually using multiple ranks)?
+	bool mpi = false;
 };
