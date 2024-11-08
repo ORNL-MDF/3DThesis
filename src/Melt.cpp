@@ -295,15 +295,30 @@ void Melt::calc_mp_info(const vector<int>& depths, Grid& grid, const Simdat& sim
 			int seg_pt;
 			if (path[seg].smode==0){seg_pt=seg-1;}
 			else{seg_pt=seg;}
-			const int x_grid_num = (int)((path[seg_pt].sx - sim.domain.xmin) / sim.domain.xres);
-			const int y_grid_num = (int)((path[seg_pt].sy - sim.domain.ymin) / sim.domain.yres);
-			const int z_grid_num = (int)((path[seg_pt].sz - sim.domain.zmin) / sim.domain.zres);
+
+			// Get grid positions
+			int x_grid_num = static_cast<int>(std::floor((path[seg_pt].sx - sim.domain.xmin) / sim.domain.xres));
+			int y_grid_num = static_cast<int>(std::floor((path[seg_pt].sy - sim.domain.ymin) / sim.domain.yres));
+			const int z_grid_num = sim.domain.znum-1;
+
+			// Bring close to grid
+			if (x_grid_num < 0){x_grid_num=-1;}
+			if (x_grid_num > sim.domain.xnum - 1){ x_grid_num = sim.domain.xnum - 1;}
+
+			// Bring close to grid
+			if (y_grid_num < 0){y_grid_num=-1;}
+			if (y_grid_num > sim.domain.xnum - 1){ y_grid_num = sim.domain.ynum - 1;}
 
 			// Vector of test points
 			vector<int> test_pts;
 			for (int dx=0;dx<=1;dx++){
 				for (int dy=0;dy<=1;dy++){
-					const int p = (z_grid_num) + sim.domain.znum * (y_grid_num + dy) + sim.domain.znum * sim.domain.ynum * (x_grid_num + dx);
+					const int x_grid = (x_grid_num + dx);
+					const int y_grid = (y_grid_num + dy);
+					const bool i_ob = (x_grid<0 || x_grid>sim.domain.xnum-1);
+					const bool j_ob = (y_grid<0 || y_grid>sim.domain.ynum-1);
+					if (i_ob || j_ob) { continue;}
+					const int p = (z_grid_num) + sim.domain.znum * y_grid + sim.domain.znum * sim.domain.ynum * x_grid;
 					test_pts.push_back(p);
 				}
 			}
@@ -334,14 +349,29 @@ void Melt::calc_mp_info(const vector<int>& depths, Grid& grid, const Simdat& sim
 		if (multi_segs.back()==seg && path[seg].smode==0){
 			vector<int> local_test_pts = multi_local_liq_pools.back();
 			int_seg current_beam = Util::GetBeamLoc(t, seg, path, sim);
-			const int x_grid_num = (int)((current_beam.xb - sim.domain.xmin) / sim.domain.xres);
-			const int y_grid_num = (int)((current_beam.yb - sim.domain.ymin) / sim.domain.yres);
-			const int z_grid_num = (int)((current_beam.zb - sim.domain.zmin) / sim.domain.zres);
+
+			// Get grid positions
+			int x_grid_num = static_cast<int>(std::floor((current_beam.xb - sim.domain.xmin) / sim.domain.xres));
+			int y_grid_num = static_cast<int>(std::floor((current_beam.yb - sim.domain.ymin) / sim.domain.yres));
+			const int z_grid_num = sim.domain.znum-1;
+
+			// Bring close to grid
+			if (x_grid_num < 0){x_grid_num=-1;}
+			if (x_grid_num > sim.domain.xnum - 1){ x_grid_num = sim.domain.xnum - 1;}
+
+			// Bring close to grid
+			if (y_grid_num < 0){y_grid_num=-1;}
+			if (y_grid_num > sim.domain.xnum - 1){ y_grid_num = sim.domain.ynum - 1;}
 
 			// Vector of test points
 			for (int dx=0;dx<=1;dx++){
 				for (int dy=0;dy<=1;dy++){
-					const int p = (z_grid_num) + sim.domain.znum * (y_grid_num + dy) + sim.domain.znum * sim.domain.ynum * (x_grid_num + dx);
+					const int x_grid = (x_grid_num + dx);
+					const int y_grid = (y_grid_num + dy);
+					const bool i_ob = (x_grid<0 || x_grid>sim.domain.xnum-1);
+					const bool j_ob = (y_grid<0 || y_grid>sim.domain.ynum-1);
+					if (i_ob || j_ob) { continue;}
+					const int p = (z_grid_num) + sim.domain.znum * y_grid + sim.domain.znum * sim.domain.ynum * x_grid;
 					local_test_pts.push_back(p);
 				}
 			}
@@ -442,7 +472,6 @@ void Melt::local_neighbor_check(vector<int>& test_pts, vector<int>& liq_pts, Gri
 		const int i = grid.get_i(p);
 		const int j = grid.get_j(p);
 		const int k = grid.get_k(p);
-
 		for (int di=-1;di<=1;di++){
 			for (int dj=-1;dj<=1;dj++){
 				const int ni = i + di;
