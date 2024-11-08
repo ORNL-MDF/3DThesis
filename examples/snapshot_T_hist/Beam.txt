@@ -6,6 +6,6 @@ Shape
 }
 Intensity
 {
-	Power		600
+	Power		1200
 	Efficiency	1.0
 }

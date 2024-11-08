@@ -48,7 +48,7 @@ inline void run(int argc, char * argv[])
 
 	//Command line input to program is the file that contains the simulation file names
 	string	inputFile;
-	if (argc <= 1) { inputFile = "TestInputs/ParamInput.txt"; }
+	if (argc <= 1) { inputFile = ""; }
 	else { inputFile = argv[1]; }
 
 	// Initialize struct for simulation parameters
