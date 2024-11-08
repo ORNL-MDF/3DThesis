@@ -165,7 +165,7 @@ This file contains all variables which can be output. A value of 0 indicated to 
   - `eqFrac`: Equiaxed fraction
   - `RDF`: Export results in “Reduced Data Format” compatible with ExaCA
   - `numMelt`: Number of times a point melted and solidified
-  - `MP_Stats`: Output the maximum width and length of the melt pool at each point
+  - `MP_Stats`: Output the maximum width and length of the melt pool at each point. MP_Stats may have unexpected behavior when using with MPI domain decomposition or multiple beams.
 - Solidification+
   - `H`: Magnitude of the orthogonal differential change in the solidification gradient in the direction of the solidification gradient
   - `Hx`: x-component of normalized H
