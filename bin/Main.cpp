@@ -98,7 +98,7 @@ inline void run(int argc, char * argv[])
 
 std::string rank_name = "";
 #ifdef Thesis_ENABLE_MPI
-if (mpi.size() > 1)
+if (sim.mpi)
 	rank_name = "." + mpi.name;
 #endif
 

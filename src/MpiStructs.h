@@ -59,6 +59,7 @@ public:
     void setPrint(Simdat& sim) {
         // Update local rank printing
         sim.print = rank == 0;
+        sim.mpi = size() > 1;
     }
 
     // Make x-y bounds for local domain
