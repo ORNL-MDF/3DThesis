@@ -38,6 +38,7 @@
 #include <deque>
 #include <list>
 #include <climits>
+#include <cfloat>
 
 using std::vector;
 using std::string;
@@ -112,6 +113,7 @@ struct SimParams {
 	string tracking = "None";		// meltpool tracking mode
 	double dt = 1e-5;			// timestep
 	int out_freq = 1;		// output frequency
+	double radiusCheck = 1.0;		// The radius to be checking perimeter points from (different behavior is >1)
 	bool secondary = false;		// calculate secondary solidifiaction
 };
 
