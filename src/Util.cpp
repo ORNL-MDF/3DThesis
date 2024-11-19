@@ -65,9 +65,10 @@ void Util::AddToNodes(Nodes& nodes, const int_seg seg) {
 	nodes.xb.push_back(seg.xb);
 	nodes.yb.push_back(seg.yb);
 	nodes.zb.push_back(seg.zb);
-	nodes.phix.push_back(seg.phix);
-	nodes.phiy.push_back(seg.phiy);
-	nodes.phiz.push_back(seg.phiz);
+	// TODO::FEATURE
+	nodes.phix.push_back(1.0/seg.phix);
+	nodes.phiy.push_back(1.0/seg.phiy);
+	nodes.phiz.push_back(1.0/seg.phiz);
 	nodes.dtau.push_back(seg.dtau);
 	nodes.expmod.push_back(log(seg.qmod)-log(seg.phix * seg.phiy * seg.phiz) / 2.0);
 }

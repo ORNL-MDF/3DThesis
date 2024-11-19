@@ -268,21 +268,17 @@ double Grid::Calc_T(const double t, const Nodes& nodes, const Simdat& sim, const
 	**************************************************************************************************/
 
 	const double xp = get_x(p);
-	const double yp = get_y(p);
-	const double zp = get_z(p);
-	
-	double dT = 0;
+    const double yp = get_y(p);
+    const double zp = get_z(p);
+    
+    double dT = 0;
 	for (size_t iter = 0; iter < nodes.size; iter++) {
 		
 		const double dx = xp - nodes.xb[iter];
 		const double dy = yp - nodes.yb[iter];
 		const double dz = zp - nodes.zb[iter];
 
-		const double phix = nodes.phix[iter];
-		const double phiy = nodes.phiy[iter];
-		const double phiz = nodes.phiz[iter];
-
-		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz)) + nodes.expmod[iter]);
+		const double phi = exp(-3.0 * ((dx * dx * nodes.phix[iter]) + (dy * dy * nodes.phiy[iter]) + (dz * dz * nodes.phiz[iter])) + nodes.expmod[iter]);
 		const double dT_seg = nodes.dtau[iter] * phi;
 		
 		dT += dT_seg;
@@ -412,36 +408,32 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Primary(const double t, const No
 	double Gz_temp = 0;
 	double Laplace = 0;
 	double dT_t = 0;
-
 	for (size_t iter = 0; iter < nodes.size; iter++) {
 
 		const double dx = xp - nodes.xb[iter];
 		const double dy = yp - nodes.yb[iter];
 		const double dz = zp - nodes.zb[iter];
 
-		const double phix = nodes.phix[iter];
-		const double phiy = nodes.phiy[iter];
-		const double phiz = nodes.phiz[iter];
-
-		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz)) + nodes.expmod[iter]);
+		const double phi = exp(-3.0 * ((dx * dx * nodes.phix[iter]) + (dy * dy * nodes.phiy[iter]) + (dz * dz * nodes.phiz[iter])) + nodes.expmod[iter]);
 
 		const double dT_seg = nodes.dtau[iter] * phi;
 
 		dT += dT_seg;
+		
+		const double ddpx = (-6.0 * nodes.phix[iter]);
+		const double ddpy = (-6.0 * nodes.phiy[iter]);
+		const double ddpz = (-6.0* nodes.phiz[iter]);
 
-		const double dpx = (-6.0 * dx / phix);
-		const double dpy = (-6.0 * dy / phiy);
-		const double dpz = (-6.0 * dz / phiz);
-		const double ddpx = (-6.0 / phix);
-		const double ddpy = (-6.0 / phiy);
-		const double ddpz = (-6.0 / phiz);
+		const double dpx = (ddpx * dx);
+		const double dpy = (ddpy * dy);
+		const double dpz = (ddpz * dz);
 
 		Gx_temp += dT_seg * dpx;	//x-gradient
 		Gy_temp += dT_seg * dpy;	//y-gradient
 		Gz_temp += dT_seg * dpz;	//z-gradient
 
 		Laplace += dT_seg * (dpx * dpx + dpy * dpy + dpz * dpz + ddpx + ddpy + ddpz); //laplacian
-		if (nodes.dtau[iter] == 0) { dT_t += phi; }  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
+		dT_t += (nodes.dtau[iter]== 0) ? phi : 0;  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
 	}
 
 	vector<double> primaryParams = { Gx_temp, Gy_temp, Gz_temp, Laplace, dT_t };
@@ -479,29 +471,26 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Secondary(const double t, const 
 		const double dy = yp - nodes.yb[iter];
 		const double dz = zp - nodes.zb[iter];
 
-		const double phix = nodes.phix[iter];
-		const double phiy = nodes.phiy[iter];
-		const double phiz = nodes.phiz[iter];
-
-		const double phi = exp(-3.0 * ((dx * dx / phix) + (dy * dy / phiy) + (dz * dz / phiz)) + nodes.expmod[iter]);
+		const double phi = exp(-3.0 * ((dx * dx * nodes.phix[iter]) + (dy * dy * nodes.phiy[iter]) + (dz * dz * nodes.phiz[iter])) + nodes.expmod[iter]);
 
 		const double dT_seg = nodes.dtau[iter] * phi;
 
 		dT += dT_seg;
+		
+		const double ddpx = (-6.0 * nodes.phix[iter]);
+		const double ddpy = (-6.0 * nodes.phiy[iter]);
+		const double ddpz = (-6.0* nodes.phiz[iter]);
 
-		const double dpx = (-6.0 * dx / phix);
-		const double dpy = (-6.0 * dy / phiy);
-		const double dpz = (-6.0 * dz / phiz);
-		const double ddpx = (-6.0 / phix);
-		const double ddpy = (-6.0 / phiy);
-		const double ddpz = (-6.0 / phiz);
+		const double dpx = (ddpx * dx);
+		const double dpy = (ddpy * dy);
+		const double dpz = (ddpz * dz);
 
 		Gx_temp += dT_seg * dpx;	//x-gradient
 		Gy_temp += dT_seg * dpy;	//y-gradient
 		Gz_temp += dT_seg * dpz;	//z-gradient
 
 		Laplace += dT_seg * (dpx * dpx + dpy * dpy + dpz * dpz + ddpx + ddpy + ddpz); //laplacian
-		if (nodes.dtau[iter] == 0) { dT_t += phi; }  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
+		dT_t += (nodes.dtau[iter]== 0) ? phi : 0;  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
 		
 		dGxdx += dT_seg * (dpx * dpx + ddpx);
 		dGxdy += dT_seg * (dpx * dpy);
