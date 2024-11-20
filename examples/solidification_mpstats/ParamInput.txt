@@ -1,0 +1,14 @@
+Simulation
+{
+	Name		solidification_mpstats
+	Mode		Mode.txt
+	Material	Material.txt
+	Beam		Beam.txt
+	Path		Path.txt
+}
+Options
+{
+	Domain		Domain.txt
+	Output		Output.txt
+	Settings	Settings.txt
+}

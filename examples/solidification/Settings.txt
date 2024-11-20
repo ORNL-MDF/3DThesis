@@ -1,0 +1,4 @@
+Compute
+{
+	MaxThreads	8
+}

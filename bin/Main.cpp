@@ -47,9 +47,8 @@ inline void run(int argc, char * argv[])
 	auto start_in = high_resolution_clock::now();
 
 	//Command line input to program is the file that contains the simulation file names
-	string	inputFile;
-	if (argc <= 1) { inputFile = "TestInputs/ParamInput.txt"; }
-	else { inputFile = argv[1]; }
+	if (argc <= 1) { throw std::runtime_error( "Input file argument required: ./3DThesis ParamInput.txt" ); }
+        string inputFile = argv[1];
 
 	// Initialize struct for simulation parameters
 	Simdat sim;
