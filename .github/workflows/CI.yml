@@ -112,5 +112,18 @@ jobs:
           if [ $(expr $file_count) < 1 ]; then
               exit 1
           fi
- 
- 
+      - name: Test 3DThesis Solidification with Stork output
+        run: |
+          cd $GITHUB_WORKSPACE/examples/solidification_stork
+          echo Current working directory: $(pwd)
+          $HOME/3dthesis/bin/3DThesis ./ParamInput.txt
+          file_count="$(find Data -name "stork.RRDF*.csv" -printf "." | wc -m)"
+          if [ $(expr $file_count) < 1 ]; then
+              exit 1
+          fi
+          rm -r Data
+          mpirun -n 2 --oversubscribe $HOME/3dthesis/bin/3DThesis ./ParamInput.txt
+          file_count="$(find Data -name "stork.RRDF*.csv" -printf "." | wc -m)"
+          if [ $(expr $file_count) < 1 ]; then
+              exit 1
+          fi
