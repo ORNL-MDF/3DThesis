@@ -241,7 +241,7 @@ void Grid::Output_RRDF_csv(const Simdat& sim, const string name){
 void Grid::Output_RRDF_bin(const Simdat& sim, const string name){
 	
 	// Make file name
-	const string binFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".mdf";
+	const string binFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".bin";
 	
 	// Set references to data
 	const vector<uint32_t>& idxs = RRDF_idxs;
