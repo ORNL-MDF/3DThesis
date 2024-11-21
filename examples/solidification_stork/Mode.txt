@@ -1,0 +1,7 @@
+Solidification
+{
+	Tracking	Stork
+	Timestep	1e-4
+}
+
+

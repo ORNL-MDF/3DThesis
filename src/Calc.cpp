@@ -10,7 +10,6 @@
  ****************************************************************************/
 
 #include <cmath>
-#include <cfloat>
 #include <algorithm>
 #include "DataStructs.h"
 #include "Calc.h"
