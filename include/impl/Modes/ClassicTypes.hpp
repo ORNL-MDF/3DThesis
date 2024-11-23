@@ -19,33 +19,38 @@
 
 #include <vector>
 #include <atomic>
-#include "DataStructs.h"
-#include "Grid.h"
+
+#include "impl/Structs/DataStructs.hpp"
+#include "impl/Structs/Grid.hpp"
 
 using std::vector;
 using std::string;
 using std::atomic;
 
-namespace Run{
-	//Chooses between modes
-	void Simulate(Grid&, const Simdat&);
-	
-	//Choose between snapshot modes
-	void Snapshots(Grid&, const Simdat&);
+namespace Thesis::impl
+{
+	namespace Modes
+	{
+		//Chooses between modes
+		void Simulate(Grid&, const Simdat&);
 
-	//Snapshot modes
-	void Snapshots_NoTracking(Grid&, const Simdat&);
-	void Snapshots_Volume(Grid&, const Simdat&);
-	void Snapshots_GeometryBounds(Grid&, const Simdat&);
+		//Choose between snapshot modes
+		void Snapshots(Grid&, const Simdat&);
 
-	//Choose between solidification modes
-	void Solidify(Grid&, const Simdat&);
+		//Snapshot modes
+		void Snapshots_NoTracking(Grid&, const Simdat&);
+		void Snapshots_Volume(Grid&, const Simdat&);
+		void Snapshots_GeometryBounds(Grid&, const Simdat&);
 
-	//Solidification Modes
-	void Solidify_NoTracking(Grid&, const Simdat&); 
-	void Solidify_Volume(Grid&, const Simdat&);
-	void Solidify_Surface(Grid&, const Simdat&);
+		//Choose between solidification modes
+		void Solidify(Grid&, const Simdat&);
 
-	//Special Mode for Stork Data
-	void Stork(Grid&, const Simdat&);
+		//Solidification Modes
+		void Solidify_NoTracking(Grid&, const Simdat&); 
+		void Solidify_Volume(Grid&, const Simdat&);
+		void Solidify_Surface(Grid&, const Simdat&);
+
+		//Special Mode for Stork Data
+		void Stork(Grid&, const Simdat&);
+	}
 }
