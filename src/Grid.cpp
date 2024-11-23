@@ -444,7 +444,7 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Primary(const double t, const No
 		Gz_temp += dT_seg * dpz;	//z-gradient
 
 		Laplace += dT_seg * (dpx * dpx + dpy * dpy + dpz * dpz + ddpx + ddpy + ddpz); //laplacian
-		dT_t += (nodes.dtau[iter]== 0) ? phi : 0;  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
+		dT_t += (nodes.dtau[iter]== 0) ? phi : 0;  //Notice that the interval of time we are integrating over is of size, that is because we are looking the instantaneous change at that time
 	}
 
 	vector<double> primaryParams = { Gx_temp, Gy_temp, Gz_temp, Laplace, dT_t };
@@ -501,7 +501,7 @@ vector<vector<double>> Grid::Calc_Solidficiaton_Secondary(const double t, const 
 		Gz_temp += dT_seg * dpz;	//z-gradient
 
 		Laplace += dT_seg * (dpx * dpx + dpy * dpy + dpz * dpz + ddpx + ddpy + ddpz); //laplacian
-		dT_t += (nodes.dtau[iter]== 0) ? phi : 0;  //Notice dtau is not used, that is because we are looking the instantaneous change at that time
+		dT_t += (nodes.dtau[iter]== 0) ? phi : 0;  //Notice that the interval of time we are integrating over is of size, that is because we are looking the instantaneous change at that time
 		
 		dGxdx += dT_seg * (dpx * dpx + ddpx);
 		dGxdy += dT_seg * (dpx * dpy);
