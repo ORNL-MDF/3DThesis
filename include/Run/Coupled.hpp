@@ -232,7 +232,7 @@ namespace Thesis::Run{
         // Initialize Kokoks views
         SRDF_Dual<FloatType> DualSRDF;
         SRDF<FloatType, host_space>& hostSRDF = DualSRDF.hostSRDF;
-        DualSRDF.size = ts.size()/2;
+        DualSRDF.size = static_cast<uint32_t>(ts.size()/2);
         DualSRDF.Init_Host_Views_Header();
         DualSRDF.Init_Host_Views_Data();
 
@@ -251,12 +251,29 @@ namespace Thesis::Run{
         // Make unmanaged views
         using uint32_hostView = Kokkos::View<uint32_t*, layout, host_space>;
         using floatType_hostView = Kokkos::View<FloatType*, layout, host_space>;
-        uint32_hostView unmanagedView_cellNum(idxs.data(), hostSRDF.cellNum_view.size());
+        uint32_hostView unmanagedView_cellIdxs(idxs.data(), idxs.size());
         floatType_hostView unmanagedView_t(ts_data, ts.size());
         floatType_hostView unmanagedView_T(Ts_data, Ts.size());
 
-        // Copy to managed views
-        Kokkos::deep_copy(hostSRDF.cellNum_view,unmanagedView_cellNum);
+        // Convert i,j,k -> p and store value
+        Kokkos::parallel_for(
+        "STORK - <i,j,k> to <p>",
+        Kokkos::RangePolicy<host_space>(0, DualSRDF.size),
+        KOKKOS_LAMBDA(const uint32_t n)
+            {
+                // Set references
+                const uint32_t& ynum = hostSRDF.j_num();
+                const uint32_t& znum = hostSRDF.k_num();
+                // Get indexes
+                const uint32_t i = unmanagedView_cellIdxs(3*n+0);
+                const uint32_t j = unmanagedView_cellIdxs(3*n+1);
+                const uint32_t k = unmanagedView_cellIdxs(3*n+2);
+                // Convert to 1D
+                hostSRDF.cellNum_view(n) = i*ynum*znum + j*znum + k;
+            }
+        );
+
+        // Copy rest to to managed views
         Kokkos::deep_copy(hostSRDF.times_view,unmanagedView_t);
         Kokkos::deep_copy(hostSRDF.thermals_view,unmanagedView_T);
 

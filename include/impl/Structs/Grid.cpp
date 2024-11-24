@@ -209,8 +209,8 @@ namespace Thesis::impl
 
 		// Set references to data
 		const vector<uint32_t>& idxs = RRDF_idxs;
-		const vector<double>& ts = RRDF_Ts;
-		const vector<double>& Ts = RRDF_ts;
+		const vector<double>& ts = RRDF_ts;
+		const vector<double>& Ts = RRDF_Ts;
 
 		// Get header info
 		const uint32_t size = ts.size()/2;
@@ -243,12 +243,12 @@ namespace Thesis::impl
 	void Grid::Output_RRDF_bin(const Simdat& sim, const string name){
 		
 		// Make file name
-		const string binFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".bin";
+		const string binFile = sim.files.dataDir + "/" + sim.files.name + "." + name + ".mdf";
 		
 		// Set references to data
 		const vector<uint32_t>& idxs = RRDF_idxs;
-		const vector<double>& ts = RRDF_Ts;
-		const vector<double>& Ts = RRDF_ts;
+		const vector<double>& ts = RRDF_ts;
+		const vector<double>& Ts = RRDF_Ts;
 
 		// Get header info
 		const uint32_t size = ts.size()/2;

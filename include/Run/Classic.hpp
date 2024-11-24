@@ -89,7 +89,14 @@ namespace Thesis::Run{
     #endif
 
         if (sim.param.mode=="Solidification"){ 
-            grid.Output(sim, "Solidification.Final" + rank_name); 
+            if (sim.param.tracking=="Stork"){
+                // Output RRDF
+                //grid.Output_RRDF_csv(sim, "RRDF" + rank_name);
+                grid.Output_RRDF_bin(sim, "RRDF" + rank_name);
+            }	
+            else{
+                grid.Output(sim, "Solidification.Final" + rank_name); 
+            }
         }
         if (sim.output.T_hist) { 
             grid.Output_T_hist(sim, "T.hist" + rank_name); 
@@ -97,11 +104,7 @@ namespace Thesis::Run{
         if (sim.output.RDF) { 
             grid.Output_RDF(sim, "RDF.Final" + rank_name); 
         }
-        if (sim.param.mode=="Stork"){
-            // Output RRDF
-            grid.Output_RRDF_csv(sim, "RRDF" + rank_name);
-            //grid.Output_RRDF_bin(sim, "RRDF" + rank_name);
-        }											
+										
         
         // Output output time
         auto stop_out = high_resolution_clock::now();
