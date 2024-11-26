@@ -432,7 +432,7 @@ void Run::Solidify_NoTracking(Grid& grid, const Simdat& sim) {
 
 		#pragma omp parallel for num_threads(sim.settings.thnum) schedule(dynamic,1+sim.domain.pnum/sim.settings.thnum/64)
 		for (int p = 0; p < sim.domain.pnum; p++) {
-			if (grid.Calc_T(t, nodes, sim, true, p) < sim.material.T_liq){
+			if (!(grid.Calc_T(t, nodes, sim, true, p) >= sim.material.T_liq)){
 				if (grid.get_T_last(p) >= sim.material.T_liq) {
 					grid.Solidify(t, sim, p);
 				}
@@ -516,7 +516,7 @@ void Run::Solidify_Volume(Grid& grid, const Simdat& sim) {
 			#pragma omp for schedule(dynamic,1+last_liq_pts.size()/sim.settings.thnum/64)
 			for (int it = 0; it < last_liq_pts.size(); it++) {
 				const int p = last_liq_pts[it];
-				if (grid.Calc_T(t, nodes, sim, true, p) < sim.material.T_liq) {
+				if (!(grid.Calc_T(t, nodes, sim, true, p) >= sim.material.T_liq)) {
 					grid.Solidify(t, sim, p);
 				}
 				else { 
@@ -623,7 +623,7 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 			#pragma omp for schedule(dynamic,1+last_liq_pts.size()/sim.settings.thnum/64)
 			for (int it = 0; it < last_liq_pts.size(); it++) {
 				const int p = last_liq_pts[it];
-				if (grid.Calc_T(t, nodes, sim, true , p) < sim.material.T_liq){
+				if (!(grid.Calc_T(t, nodes, sim, true , p) >= sim.material.T_liq)){
 					grid.Solidify(t, sim, p);
 					// SOLIDIFY REST OF COLUMN //	
 					const int i = grid.get_i(p);
@@ -804,8 +804,7 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 				if (T_cur[p] >= sim.material.T_liq)
 				{
 					// Add to surface liquid points to being checking
-					th_liq_pts.push_back(p);
-					
+					th_liq_pts.push_back(p);			
 				}
 				// If the previously molten surface point has solidified, then every point below it must have as well
 				else 
@@ -841,7 +840,7 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 			reset_pts.push_back(p);
 			// Calculate Temperature
 			if (T_calc_cur[p]==0){
-				T_cur[p] = grid.Calc_T(t, nodes, sim, true , p);
+				T_cur[p] = grid.Calc_T(t, nodes, sim, true, p);
 				T_calc_cur[p] = 1;
 				if (T_cur[p] >= sim.material.T_liq) {
 					test_pts.push_back(p);
@@ -923,7 +922,7 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 				depth++;
 				// If at bottom of domain, break and display message
 				if (depth == sim.domain.znum) { 
-					std::cout << "WARNING::MAXIMUM EXCEEDED";
+					std::cout << "WARNING::MAXIMUM EXCEEDED\n";
 					break; 
 				}
 				// Find point number
@@ -931,7 +930,7 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 				// If the point is solid, go to next loop
 				T_cur[p_temp] = grid.Calc_T(t, nodes, sim, false, p_temp);
 				T_calc_cur[p_temp] = 1;
-				if (T_cur[p_temp] < sim.material.T_liq) {break;}
+				if (!(T_cur[p_temp] >= sim.material.T_liq)) {break;}
 				// Otherwise, set a flag saying we sucessfully went deeper
 				else { wentDeeper = true; }
 			}
@@ -965,7 +964,7 @@ void Run::Stork(Grid& grid, const Simdat& sim) {
 			{
 				vector<int> th_c_relevant;
 				th_c_relevant.reserve(c_pnum);
-				#pragma omp for schedule(static)//dynamic,16384)//static)
+				#pragma omp for schedule(static)
 				for (int c = 0; c < c_pnum; c++){
 					// Get <i,j,k> of the min point (which is <ci,cj,ck>)
 					const int ci = (c/c_ynum)/(c_znum);
