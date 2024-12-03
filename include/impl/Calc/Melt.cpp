@@ -184,7 +184,7 @@ namespace Thesis::impl{
 		test_pts = test_tmp;
 	}
 
-	void Melt::calc_depth(vector<int>& depths, vector<int>& liq_pts, vector<int>& reset_pts, Grid& grid, const Nodes& nodes, const Nodes& isegv_last, const Simdat& sim, const double t) {
+	void Melt::calc_depth(vector<int>& depths, vector<int>& liq_pts, vector<int>& reset_pts, Grid& grid, vector<int>& start_seg, const Nodes& nodes, const Nodes& isegv_last, const Simdat& sim, const double t) {
 		if (sim.domain.znum == 1) {return;} 
 		#pragma omp parallel num_threads(sim.settings.thnum)
 		{
@@ -215,7 +215,7 @@ namespace Thesis::impl{
 							const double T_last = grid.Calc_T(t - sim.param.dt, isegv_last, sim, false, p_temp);
 							grid.set_T_last(T_last, p_temp);
 						}
-						grid.Solidify(t, sim, p_temp);
+						grid.Solidify(start_seg, t, sim, p_temp);
 					}
 					else { 
 						break; 

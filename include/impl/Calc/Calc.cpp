@@ -22,9 +22,13 @@
 namespace Thesis::impl
 {
 
-	void Calc::Integrate_Parallel(Nodes& nodes, const Simdat& sim, const double t, const bool isSol) {
+	void Calc::Integrate_Parallel(Nodes& nodes, vector<Nodes>& nodes_par, vector<int>& start_seg, const Simdat& sim, const double t, const bool isSol) {
 		const int numThreads = sim.settings.thnum;
-		static vector<Nodes> nodes_par;
+		// If it hasn't been initialized yet, initilaize it
+		if (!start_seg.size()){
+			// This enables the starting search path segment to be quickly initialized each time. 
+			start_seg = vector<int>(sim.paths.size(), 1);
+		}
 		// If integrating in parallel
 		if (numThreads>1) {
 			// if the size is zero, integrate in parallel. Otherise, just take the last one (next time) from the previously calculated vector
@@ -35,7 +39,7 @@ namespace Thesis::impl
 					Nodes th_nodes;
 					#pragma omp for schedule(static)
 					for (int i = 0; i < numThreads; i++) {
-						Calc::Integrate_Serial(th_nodes, sim, t+i*sim.param.dt, isSol);
+						Calc::Integrate_Serial(th_nodes, start_seg, sim, t+i*sim.param.dt, isSol);
 						nodes_par[numThreads - i - 1] = th_nodes;
 					}
 				}
@@ -44,23 +48,29 @@ namespace Thesis::impl
 			nodes_par.pop_back();
 		}
 		else {
-			Calc::Integrate_Serial(nodes, sim, t, isSol);
+			Calc::Integrate_Serial(nodes, start_seg, sim, t, isSol);
 		}
 		return;
 	}
 
-	void Calc::Integrate_Serial(Nodes& nodes, const Simdat& sim, const double t, const bool isSol) {
+	void Calc::Integrate_Serial(Nodes& nodes, vector<int>& start_seg, const Simdat& sim, const double t, const bool isSol) {
+		// If it hasn't been initialized yet, initilaize it
+		if (!start_seg.size()){
+			// This enables the starting search path segment to be quickly initialized each time. 
+			start_seg = vector<int>(sim.paths.size(), 1);
+		}
+		
 		if (sim.settings.compress) { 
-			Calc::GaussCompressIntegrate(nodes, sim, t, isSol); 
+			Calc::GaussCompressIntegrate(nodes, start_seg, sim, t, isSol); 
 			//If not solidifying, always choose the minimum of the two; otherwise, too expensive
 			if (!isSol) {
 				Nodes nodes_reg;
-				Calc::GaussIntegrate(nodes_reg, sim, t, isSol);
+				Calc::GaussIntegrate(nodes_reg, start_seg, sim, t, isSol);
 				if (nodes_reg.size <= nodes.size) { nodes = nodes_reg; }
 			}
 		}
 		else { 
-			Calc::GaussIntegrate(nodes, sim, t, isSol);
+			Calc::GaussIntegrate(nodes, start_seg, sim, t, isSol);
 		}
 
 		if (sim.domain.use_BCs) { Calc::AddBCs(nodes, sim.domain); }
@@ -68,10 +78,7 @@ namespace Thesis::impl
 		return;
 	}
 
-	void Calc::GaussIntegrate(Nodes& nodes, const Simdat& sim, const double t, const bool isSol) {
-		
-		// This enables the starting search path segment to be quickly initialized each time. 
-		static vector<int> start_seg(sim.paths.size(), 1);
+	void Calc::GaussIntegrate(Nodes& nodes, vector<int>& start_seg, const Simdat& sim, const double t, const bool isSol) {
 
 		// Quadrature node locations for order 2, 4, 8, and 16
 		static const double locs[30] = {
@@ -88,6 +95,7 @@ namespace Thesis::impl
 			0.10122854, 0.22238103, 0.31370665, 0.36268378, 0.36268378, 0.31370665, 0.22238103, 0.10122854,
 			0.02715246, 0.06225352, 0.09515851, 0.12462897, 0.14959599, 0.16915652,0.18260342, 0.18945061, 0.18945061, 0.18260342, 0.16915652, 0.14959599,0.12462897, 0.09515851, 0.06225352, 0.02715246
 		};
+
 		// For each beam and path
 		for (int i = 0; i < sim.paths.size(); i++) {
 
@@ -104,8 +112,8 @@ namespace Thesis::impl
 			// Keep incrementing down if t is less than end of previous path segment
 			while ((t < path[seg_temp - 1].seg_time) && (seg_temp - 1 > 0)) { seg_temp--; }
 			
-			// If not solidifying, then make this the start next time the function is run
-			if (!isSol) {start_seg[i] = seg_temp;}
+			// If not solidifying and the first thread, then make this the start next time the function is run
+			if (!isSol && (omp_get_thread_num()==0)) {start_seg[i] = seg_temp;}
 
 			// Get minimim time to integrate to
 			const double t0 = Util::t0calc(t, beam, sim.material, sim.settings);
@@ -214,10 +222,8 @@ namespace Thesis::impl
 		return;
 	}
 
-	void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double t, const bool isSol) {
-		// This enables the starting search path segment to be quickly initialized each time. 
-		static vector<int> start_seg(sim.paths.size(), 1);
-
+	void Calc::GaussCompressIntegrate(Nodes& nodes, vector<int>& start_seg, const Simdat& sim, const double t, const bool isSol) {
+		
 		// Quadrature node locations for order 2, 4, 8, and 16
 		static const double locs[30] = {
 			-0.57735027,  0.57735027,

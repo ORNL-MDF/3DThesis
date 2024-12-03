@@ -44,6 +44,7 @@ namespace Thesis::Run{
 
         // Initialize struct for simulation parameters
         Simdat sim;
+        sim.print = false;
 
     #ifdef Thesis_ENABLE_MPI
         // Initialize MPI
@@ -153,6 +154,7 @@ namespace Thesis::Run{
 
         // Initialize struct for simulation parameters
         Simdat sim;
+        sim.print = false;
 
     #ifdef Thesis_ENABLE_MPI
         // Initialize MPI

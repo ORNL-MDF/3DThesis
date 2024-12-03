@@ -145,8 +145,8 @@ namespace Thesis::impl
 
 	// Some utility variables
 	struct Utility { 
-		double allScansEndTime = 0;		// Time when all scans are done
-		double approxEndTime = 0;		// Approximate end time to simulation
+		double allScansEndTime = 0.0;		// Time when all scans are done
+		double approxEndTime = 0.0;		// Approximate end time to simulation
 		bool sol_finish = false;				// Has solidification finished
 		bool do_sol = false;					// Do solidification calculation
 	};
@@ -181,5 +181,15 @@ namespace Thesis::impl
 		bool print = true;
 		// Is this running with MPI (actually using multiple ranks)?
 		bool mpi = false;
+	};
+
+	// Entire quadrature data structure
+	struct QuadDat{
+		Nodes cur_nodes;
+		Nodes prev_nodes;
+
+		vector<Nodes> par_nodes;
+
+		vector<int> start_seg; // TODO::INITIALIZE (sim.paths.size(), 1);
 	};
 }

@@ -37,7 +37,7 @@ namespace Thesis::Run{
         if (argc <= 1) { throw std::runtime_error( "Input file argument required: ./3DThesis ParamInput.txt" ); }
             string inputFile = argv[1];
 
-        // Initialize struct for simulation parameters
+        // Initialize struct for simulation parameters and quadrature
         Simdat sim;
 
     #ifdef Thesis_ENABLE_MPI

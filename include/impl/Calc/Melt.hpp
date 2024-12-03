@@ -24,7 +24,7 @@ namespace Thesis::impl{
 		// Checks the neigbors of points to see if they are melted too
 		void neighbor_check(vector<int>&, vector<int>& , vector<int>& , Grid&, vector<omp_lock_t>&, const Nodes&, const Simdat&, const double, const bool);
 		// Calculate the depth of a melt at a specific x,y coordinate. Only used in mode_3.
-		void calc_depth(vector<int>&, vector<int>&, vector<int>&, Grid&, const Nodes&, const Nodes&, const Simdat&, const double);
+		void calc_depth(vector<int>&, vector<int>&, vector<int>&, Grid&, vector<int>&, const Nodes&, const Nodes&, const Simdat&, const double);
 		// Calculate the max depth of a melt at a specific x,y coordinate. Only works in mode_3.
 		void calc_depth_max(vector<int>&, vector<double>&, vector<int>&, Grid&, const Nodes&, const Simdat&);
 		// Calculate meltpool statistics 

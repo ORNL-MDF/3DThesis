@@ -21,30 +21,30 @@
 
 namespace Thesis::impl
 {
-	void Out::Progress(const Simdat& sim, const int itert) {
-		static int prog_print_last = 0;
-		int prog_now = int(10.0 * itert * sim.param.dt / sim.util.allScansEndTime);
-		if (sim.print && prog_now != prog_print_last) {
-			prog_print_last = prog_now;
-			if (prog_print_last <= 10) {
-				std::cout << "Time step: " << itert << "\t\t";
-				std::cout << "% of Path: " << 10 * prog_print_last << "%" << "\n";
-			}
-			else{
-				std::cout << "Time step: " << itert << "\t\t";
-				std::cout << "Cooling... \n";
+	void Out::Progress(int& prog_print_last, const Simdat& sim, const int itert) {
+		if (sim.print){
+			int prog_now = int(10.0 * itert * sim.param.dt / sim.util.allScansEndTime);
+			if (sim.print && prog_now != prog_print_last) {
+				prog_print_last = prog_now;
+				if (prog_print_last <= 10) {
+					std::cout << "Time step: " << itert << "\t\t";
+					std::cout << "% of Path: " << 10 * prog_print_last << "%" << "\n";
+				}
+				else{
+					std::cout << "Time step: " << itert << "\t\t";
+					std::cout << "Cooling... \n";
+				}
 			}
 		}
-		return;
 	}
 
-	void Out::Point_Progress(const Simdat& sim, const int p) {
-		static int prog_print_last = 0;
-		int prog_now = 10 * p / sim.domain.pnum;
-		if (sim.print && prog_now != prog_print_last) {
-			prog_print_last = prog_now;
-			std::cout << "% of Points: " << 10 * prog_print_last << "%" << "\n";
+	void Out::Point_Progress(int& prog_print_last, const Simdat& sim, const int p) {
+		if (sim.print){
+			int prog_now = 10 * p / sim.domain.pnum;
+			if (sim.print && prog_now != prog_print_last) {
+				prog_print_last = prog_now;
+				std::cout << "% of Points: " << 10 * prog_print_last << "%" << "\n";
+			}
 		}
-		return;
 	}
 }

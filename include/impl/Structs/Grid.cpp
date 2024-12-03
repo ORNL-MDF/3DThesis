@@ -319,16 +319,17 @@ namespace Thesis::impl
 		return T_temp;
 	}
 
-	void Grid::Solidify(const double t, const Simdat& sim, const int p) {
+	void Grid::Solidify(vector<int>& start_seg, const double t, const Simdat& sim, const int p) {
 		add_numMelt(p);
 		if (sim.util.do_sol == false) { return; }
 
-		const double t_sol = Calc_Solidification_time(t, sim, p);
+		const double t_sol = Calc_Solidification_time(start_seg, t, sim, p);
 		set_tSol(t_sol, p);
 		add_RDF_tl(t_sol, p);
 
+
 		Nodes nodes;
-		Calc::Integrate_Serial(nodes, sim, t_sol, true);
+		Calc::Integrate_Serial(nodes, start_seg, sim, t_sol, true);
 
 		if (!sim.param.secondary) {
 			const vector<vector<double>> params = Calc_Solidficiaton_Primary(t_sol, nodes, p);
@@ -343,7 +344,7 @@ namespace Thesis::impl
 		}
 	}
 
-	double Grid::Calc_Solidification_time(const double t, const Simdat& sim, const int p) {
+	double Grid::Calc_Solidification_time(vector<int>& start_seg, const double t, const Simdat& sim, const int p) {
 
 		// Controls iteration
 		bool runFlag = true;
@@ -378,7 +379,7 @@ namespace Thesis::impl
 
 			// Get Quadrature information at t0
 			Util::ClearNodes(nodes);
-			Calc::Integrate_Serial(nodes, sim, t0, 0);
+			Calc::Integrate_Serial(nodes, start_seg, sim, t0, 0);
 
 			// Calculate Temperature at t0
 			T_temp = Calc_T(t0, nodes, sim, 0, p);

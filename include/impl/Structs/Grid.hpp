@@ -279,7 +279,41 @@ namespace Thesis::impl
 			}
 
 		}
-		~Grid() {};
+		~Grid() {
+			if (i != NULL) { delete[] i; i = NULL; }
+			if (j != NULL) { delete[] j; j = NULL;}
+			if (k != NULL) { delete[] k; k = NULL;}
+			if (T_calc_flag != NULL) { delete[] T_calc_flag; T_calc_flag = NULL;}
+			if (output_flag != NULL) { delete[] output_flag; output_flag = NULL;}
+			if (x != NULL) { delete[] x; x = NULL;}
+			if (y != NULL) { delete[] y; y = NULL;}
+			if (z != NULL) { delete[] z; z = NULL;}
+			if (T != NULL) { delete[] T; T = NULL;}
+			if (T_last != NULL) { delete[] T_last; T_last = NULL;}
+			if (tSol != NULL) { delete[] tSol; tSol = NULL;}
+			if (G != NULL) { delete[] G; G = NULL;}
+			if (V != NULL) { delete[] V; V = NULL;}
+			if (Gx != NULL) { delete[] Gx; Gx = NULL;}
+			if (Gy != NULL) { delete[] Gy; Gy = NULL;}
+			if (Gz != NULL) { delete[] Gz; Gz = NULL;}
+			if (dTdt != NULL) { delete[] dTdt; dTdt = NULL;}
+			if (eqFrac != NULL) { delete[] eqFrac; eqFrac = NULL;}
+			if (numMelt != NULL) { delete[] numMelt; numMelt = NULL;}
+			if (H != NULL) { delete[] H; H = NULL;}
+			if (Hx != NULL) { delete[] Hx; Hx = NULL;}
+			if (Hy != NULL) { delete[] Hy; Hy = NULL;}
+			if (Hz != NULL) { delete[] Hz; Hz = NULL;}
+			if (depth != NULL) { delete[] depth; depth = NULL;}
+			if (T_hist != NULL) { delete[] T_hist; T_hist = NULL;}
+			if (t_hist != NULL) { delete[] t_hist; t_hist = NULL;}
+			if (RDF_tm != NULL) { delete[] RDF_tm; RDF_tm = NULL;}
+			if (RDF_tl != NULL) { delete[] RDF_tl; RDF_tl = NULL;}
+			if (RDF_cr != NULL) { delete[] RDF_cr; RDF_cr = NULL;}
+			if (MP_Width != NULL) { delete[] MP_Width; MP_Width = NULL;}
+			if (MP_Length != NULL) { delete[] MP_Length; MP_Length = NULL;}
+			if (MP_Depth != NULL) { delete[] MP_Depth; MP_Depth = NULL;}
+		};
+		
 		void InitializeGridPoints(const Simdat&);
 		void Output(const Simdat&, const string);
 		vector<vector<double>> Output_Table(const Simdat& sim);
@@ -289,8 +323,8 @@ namespace Thesis::impl
 		void Output_RRDF_bin(const Simdat&, const string);
 
 		double Calc_T(const double, const Nodes&, const Simdat&, const bool, const int);				// Returns temperature 
-		void Solidify(const double, const Simdat&, const int);												// Solidifies point
-		double Calc_Solidification_time(const double, const Simdat&, const int);							// Returns time of solidification
+		void Solidify(vector<int>&, const double, const Simdat&, const int);												// Solidifies point
+		double Calc_Solidification_time(vector<int>&, const double, const Simdat&, const int);							// Returns time of solidification
 		vector<vector<double>> Calc_Solidficiaton_Primary(const double, const Nodes&, const int);	// Returns {Gx,Gy,Gz,Laplace,dT_t}
 		vector<vector<double>> Calc_Solidficiaton_Secondary(const double, const Nodes&, const int);
 		void Set_Solidficiaton_Primary(const vector<double>&, const Simdat&, const int);

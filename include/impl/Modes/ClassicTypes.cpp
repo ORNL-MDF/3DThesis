@@ -55,10 +55,15 @@ namespace Thesis::impl{
 
 	void Modes::Snapshots_NoTracking(Grid& grid, const Simdat& sim) 
 	{
+		// Print Stuff
+		int print_prog_last = 0;
 
-		//Pre-calculate integration loop information
-		vector<Nodes> isegv_par;
-		Nodes nodes;
+		// Integration information
+		QuadDat quad;
+		Nodes& nodes = quad.cur_nodes;
+		Nodes& nodes_last = quad.prev_nodes;
+		vector<Nodes>& parNodes = quad.par_nodes;
+		vector<int>& start_seg = quad.start_seg;
 
 		// Make sure every point outputs temperature
 		#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
@@ -77,7 +82,7 @@ namespace Thesis::impl{
 			std::cout << "Time: " << t << "\n";
 			
 			// Get quadrature nodes
-			Calc::Integrate_Serial(nodes, sim, t, false);
+			Calc::Integrate_Serial(nodes, start_seg, sim, t, false);
 			
 			// For all points, calculate temperature
 			int p_tot = 0;
@@ -86,7 +91,7 @@ namespace Thesis::impl{
 				grid.Calc_T(t, nodes, sim, true, p);
 				#pragma omp atomic
 				p_tot++;
-				if (!omp_get_thread_num()) { Out::Point_Progress(sim, p_tot); }
+				if (!omp_get_thread_num()) { Out::Point_Progress(print_prog_last, sim, p_tot); }
 			}
 			std::cout << "\n";
 
@@ -107,10 +112,13 @@ namespace Thesis::impl{
 		vector<omp_lock_t> lock(sim.domain.pnum);
 		Util::SetLocks(lock, sim);
 
-		//Pre-calculate integration loop information
-		vector<Nodes> isegv_par;
-		Nodes nodes;
-		
+		// Integration information
+		QuadDat quad;
+		Nodes& nodes = quad.cur_nodes;
+		Nodes& nodes_last = quad.prev_nodes;
+		vector<Nodes>& parNodes = quad.par_nodes;
+		vector<int>& start_seg = quad.start_seg;
+
 		// Vector of Liquid Point numbers
 		vector<int> liq_pts;
 
@@ -137,7 +145,7 @@ namespace Thesis::impl{
 			std::cout << "Time: " << t << "\n";
 
 			// Get quadrature nodes
-			Calc::Integrate_Serial(nodes, sim, t, false);
+			Calc::Integrate_Serial(nodes, start_seg, sim, t, false);
 
 			// Trace path from now until start of scan to seed initial points
 			vector<int> bm_tr_pts;
@@ -214,9 +222,12 @@ namespace Thesis::impl{
 		vector<omp_lock_t> lock(sim.domain.pnum);
 		Util::SetLocks(lock, sim);
 
-		//Pre-calculate integration loop information
-		vector<Nodes> isegv_par;
-		Nodes nodes;
+		// Integration information
+		QuadDat quad;
+		Nodes& nodes = quad.cur_nodes;
+		Nodes& nodes_last = quad.prev_nodes;
+		vector<Nodes>& parNodes = quad.par_nodes;
+		vector<int>& start_seg = quad.start_seg;
 		
 		// Vector of Liquid Point numbers
 		vector<int> liq_pts;
@@ -281,7 +292,7 @@ namespace Thesis::impl{
 			std::cout << "Time: " << t << "\n";
 
 			// Get quadrature nodes
-			Calc::Integrate_Serial(nodes, sim, t, false);
+			Calc::Integrate_Serial(nodes, start_seg, sim, t, false);
 
 			// Trace path from now until start of scan to seed initial points
 			vector<int> bm_tr_pts;
@@ -384,13 +395,20 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Solidify_NoTracking(Grid& grid, const Simdat& sim) {
+		
+		// Print Stuff
+		int print_prog_last = 0;
+		
 		int itert = 0;
 		int liq_num = 0;
 		double t = 0.0;
 
-		//Integration information
-		vector<Nodes> isegv_par;
-		Nodes nodes;
+		// Integration information
+		QuadDat quad;
+		Nodes& nodes = quad.cur_nodes;
+		Nodes& nodes_last = quad.prev_nodes;
+		vector<Nodes>& parNodes = quad.par_nodes;
+		vector<int>& start_seg = quad.start_seg;
 
 		#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
 		for (int p = 0; p < sim.domain.pnum; p++) { 
@@ -398,9 +416,9 @@ namespace Thesis::impl{
 		}
 
 		while (true) {
-			Out::Progress(sim, itert);
+			Out::Progress(print_prog_last, sim, itert);
 			
-			Calc::Integrate_Parallel(nodes, sim, t, false);
+			Calc::Integrate_Parallel(nodes, parNodes, start_seg, sim, t, false);
 
 			#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
 			for (int p = 0; p < sim.domain.pnum; p++) { 
@@ -411,7 +429,7 @@ namespace Thesis::impl{
 			for (int p = 0; p < sim.domain.pnum; p++) {
 				if (grid.Calc_T(t, nodes, sim, true, p) < sim.material.T_liq){
 					if (grid.get_T_last(p) >= sim.material.T_liq) {
-						grid.Solidify(t, sim, p);
+						grid.Solidify(start_seg, t, sim, p);
 					}
 				}
 				else {
@@ -446,6 +464,9 @@ namespace Thesis::impl{
 	void Modes::Solidify_Volume(Grid& grid, const Simdat& sim) {
 		omp_set_nested(1);
 
+		// Print Stuff
+		int print_prog_last = 0;
+
 		//Sets locks so only 1 thread can access a master point at the same time
 		vector<omp_lock_t> lock(sim.domain.pnum);
 		Util::SetLocks(lock, sim);
@@ -457,8 +478,11 @@ namespace Thesis::impl{
 		vector<int> reset_pts;
 		
 		// Integration information
-		vector<Nodes> isegv_par;
-		Nodes nodes;
+		QuadDat quad;
+		Nodes& nodes = quad.cur_nodes;
+		Nodes& nodes_last = quad.prev_nodes;
+		vector<Nodes>& parNodes = quad.par_nodes;
+		vector<int>& start_seg = quad.start_seg;
 
 		// Set initial time, iteration, and number of liquid points
 		double t = 0.0;
@@ -466,10 +490,10 @@ namespace Thesis::impl{
 		int liq_num = 0;
 		
 		while (true) {
-			Out::Progress(sim, itert);
+			Out::Progress(print_prog_last, sim, itert);
 
 			//Calculate Integration information
-			Calc::Integrate_Parallel(nodes, sim, t, false);
+			Calc::Integrate_Parallel(nodes, parNodes, start_seg, sim, t, false);
 
 			//Set T_calc_flag at all points to indicate that they have not yet been calculated
 			#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
@@ -494,7 +518,7 @@ namespace Thesis::impl{
 				for (int it = 0; it < last_liq_pts.size(); it++) {
 					const int p = last_liq_pts[it];
 					if (grid.Calc_T(t, nodes, sim, true, p) < sim.material.T_liq) {
-						grid.Solidify(t, sim, p);
+						grid.Solidify(start_seg, t, sim, p);
 					}
 					else { 
 						th_liq_pts.push_back(p); 
@@ -550,7 +574,11 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Solidify_Surface(Grid& grid, const Simdat& sim) {
+		
 		omp_set_nested(1);
+
+		// Print Stuff
+		int print_prog_last = 0;
 
 		//Sets locks so only 1 thread can access a master point at the same time
 		vector<omp_lock_t> lock(sim.domain.pnum);
@@ -564,18 +592,21 @@ namespace Thesis::impl{
 		// Vector of Points to Reset Each Timestep
 		vector<int> reset_pts;
 
-		//Integration information
-		Nodes nodes;
-		Nodes nodes_last;
+		// Integration information
+		QuadDat quad;
+		Nodes& nodes = quad.cur_nodes;
+		Nodes& nodes_last = quad.prev_nodes;
+		vector<Nodes>& parNodes = quad.par_nodes;
+		vector<int>& start_seg = quad.start_seg;
 
 		int itert = 0, liq_num = 0;
 		double t = 0.0;
 
 		while (true) {
-			Out::Progress(sim, itert);
+			Out::Progress(print_prog_last, sim, itert);
 
 			//Calculate Integration information
-			Calc::Integrate_Parallel(nodes, sim, t, false);
+			Calc::Integrate_Parallel(nodes, parNodes, start_seg, sim, t, false);
 
 			//Set T_calc_flag at all points to indicate that they have not yet been calculated
 			#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
@@ -601,7 +632,7 @@ namespace Thesis::impl{
 				for (int it = 0; it < last_liq_pts.size(); it++) {
 					const int p = last_liq_pts[it];
 					if (grid.Calc_T(t, nodes, sim, true , p) < sim.material.T_liq){
-						grid.Solidify(t, sim, p);
+						grid.Solidify(start_seg, t, sim, p);
 						// SOLIDIFY REST OF COLUMN //	
 						const int i = grid.get_i(p);
 						const int j = grid.get_j(p);
@@ -614,7 +645,7 @@ namespace Thesis::impl{
 								const double T_last = grid.Calc_T(t - sim.param.dt, nodes_last, sim, false, p_temp);
 								grid.set_T_last(T_last, p_temp);
 							}
-							grid.Solidify(t, sim, p_temp);
+							grid.Solidify(start_seg, t, sim, p_temp);
 							th_reset_pts.push_back(p_temp);
 						}
 						depths[dnum] = 0;
@@ -652,7 +683,7 @@ namespace Thesis::impl{
 			}
 
 			//Check the depths of the meltpool, solidify if needed
-			Melt::calc_depth(depths, liq_pts, reset_pts, grid, nodes, nodes_last, sim, t);
+			Melt::calc_depth(depths, liq_pts, reset_pts, grid, start_seg, nodes, nodes_last, sim, t);
 
 			// Calculate the maximum depth under points
 			Melt::calc_depth_max(depths, depths_max, liq_pts, grid, nodes, sim);
@@ -686,7 +717,11 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Stork(Grid& grid, const Simdat& sim) {
+		
 		omp_set_nested(1);
+
+		// Print Stuff
+		int print_prog_last = 0;
 
 		//Sets locks so only 1 thread can access a master point at the same time
 		vector<omp_lock_t> lock(sim.domain.pnum);
@@ -701,8 +736,11 @@ namespace Thesis::impl{
 		vector<int> reset_pts;
 
 		// Integration information
-		Nodes nodes;
-		Nodes nodes_last;
+		QuadDat quad;
+		Nodes& nodes = quad.cur_nodes;
+		Nodes& nodes_last = quad.prev_nodes;
+		vector<Nodes>& parNodes = quad.par_nodes;
+		vector<int>& start_seg = quad.start_seg;
 
 		// Grid of liquid info (cells)
 		const int c_xnum = (sim.domain.xnum-1);
@@ -732,7 +770,8 @@ namespace Thesis::impl{
 		double t = 0.0;
 
 		while (true) {
-			Out::Progress(sim, itert);
+			
+			Out::Progress(print_prog_last, sim, itert);
 
 			// Determine which c is current and previous
 			vector<uint8_t>& c_prev = ((itert%2) ? c_alpha : c_beta);
@@ -762,7 +801,7 @@ namespace Thesis::impl{
 			liq_pts.clear();
 
 			// Calculate Integration information
-			Calc::Integrate_Parallel(nodes, sim, t, false);
+			Calc::Integrate_Parallel(nodes, parNodes, start_seg, sim, t, false);
 
 			// Check liquid points on surface to see if they have solidified
 			#pragma omp parallel num_threads(sim.settings.thnum)

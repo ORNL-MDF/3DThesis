@@ -23,8 +23,8 @@ namespace Thesis::impl
 {
 	namespace Out {
 		// Writes the progress to the console
-		void Progress(const Simdat&, const int);
+		void Progress(int&, const Simdat&, const int);
 		// Writes the progress of points to the console
-		void Point_Progress(const Simdat&, const int);
+		void Point_Progress(int&, const Simdat&, const int);
 	}
 }
