@@ -10,6 +10,7 @@ If you use 3dThesis in your work, please cite the [Stump and Plotkowski](CITATIO
 The original release is available on [DOE Code](https://doi.org/10.11578/dc.20200909.3). Subsequent releases are updated on [Zenodo](https://doi.org/10.5281/zenodo.13686743).
 
 ## Acknowledgements
+
 3dThesis has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy.
 
 3dThesis was originally co-sponsored by the U.S. Department of Energy, Office of Energy Efficiency and Renewable Energy, Advanced Manufacturing Office and the Office of Electricity Delivery and Energy Reliability (OE) - Transformer Resilience and Advanced Components (TRAC) Program.
@@ -19,10 +20,12 @@ The original release is available on [DOE Code](https://doi.org/10.11578/dc.2020
 3dThesis is distributed under an [open source 3-clause BSD license](LICENSE).
 
 ## Build
+
 3dThesis requires a C++ compiler and OpenMP for on-node parallelism. 3dThesis will optionally use MPI if available on the system.
 
 3dThesis primarily support CMake builds. A minimal example build and install looks like:
-```
+
+```bash
 cd ./3DThesis
 cmake \
     -B build \
@@ -30,20 +33,24 @@ cmake \
 cmake --build build
 cmake --install build
 ```
+
 An additional example is shown in example_build.sh
 
 3dThesis still supports `make`, but this support is planned to be removed. Options inside the `makefile` can be changed as needed for the local hardware. Run `make` from the commandline in order to build 3dThesis.
 
 ## Run
+
 By default, 3dThesis will be built within `./build/application`. The input files described below can be modified as needed and then 3dThesis can be run on the commandline: `./build/application/3dThesis`
 
 ## Inputs
+
 This section shows how to create a custom simulation with all tunable parameters.
 If a necessary keyword is not included, often the program will default to values found in the test case. Note when editing files, it is important to begin each group with a brace `{`, as well as close each group `}` as in the example files.
 
-When run from the command line, an input file is optional (e.g. `./3DThesis ParamInput.txt`), defaulting to `TestInputs/ParamInput.txt`. If `Name` is set to `TestSim`, then the data for the simulation can be found at `TestSim/Data`. All the files under `Simulation` are necessary, the rest are optional.
+When run from the command line, an input file is required (e.g. `./3DThesis ParamInput.txt`). If `Name` is set to `TestSim` in the input parameter file, then the data for the simulation can be found at `TestSim/Data`. All the files under `Simulation` are necessary, the rest are optional. Example input files for different simulation modes can be found in the `examples` directory.
 
 ### Simulation Files
+
 This set of files dictate everything having to do with the physics of the simulation, such as the material, the heat source, and the path of the heat source. All the inputs in this section are necessary.
 
 - Simulation Name
@@ -53,11 +60,13 @@ This set of files dictate everything having to do with the physics of the simula
 - Path file
 
 #### Mode File
+
 This file contains all information about how the simulation is run. There are two types of modes: `Solidification` and `Snapshots`. Only one mode can be run at a time.
 
 Solidification
+
 - `Tracking`
-  - `None` always calculates all points. 
+  - `None` always calculates all points.
   - `Volume` always calculates all molten points.
   - `Surface` always calculates the surface of the molten pool. This tracking is fastest if only simulation solidification conditions.
 - `Timestep `: interval between when the temperatures are evaluated. Setting this value too low results in unnecessary computational cost; too high and solidification will be missed.
@@ -65,15 +74,18 @@ Solidification
 - `Secondary `: Calculates the secondary solidification characteristics. This is experimental and should never be used but has been left in for research purposes.
 
 Snapshots
-- `Times` Times at which to calculate the temperature snapshots (can either choose times OR scanFracs but not both) 
-- `ScanFracs`: Times, in terms of percentage of the length of a scan path, at which to calculate the temperature snapshots
+
+- `Times` Times at which to calculate the temperature snapshots (can either choose times OR scanFracs but not both).
+- `ScanFracs`: Times, in terms of percentage of the length of a scan path, at which to calculate the temperature snapshots.
 - `Tracking`
-  - `None` always calculates all points. 
+  - `None` always calculates all points.
   - `Volume` always calculates all molten points.
   - `Surface` always calculates the surface of the molten pool. For temperature snapshots, Volume and Surface behave identically.
 
 #### Material File
+
 This file contains all the material constants to be used by the simulation. The CET parameters are not necessary and are used to calculate the equiaxed grain fraction according to the model by Gaumann et al., Acta Materialia, 2001.
+
 - `T_0`: Initial/background temperature (K)
 - `T_L`: Liquidus temperature (K)
 - `k`: Thermal conductivity (W/(m*K))
@@ -85,37 +97,43 @@ This file contains all the material constants to be used by the simulation. The 
   - `a`
 
 #### Beam File
+
 This file contains information on the energy source, which is a volumetric gaussian. It should be noted that everything input here is equivalent to `√6 σ` as defined by the `D4σ` beam diameter. For example, if the standard deviation of an actual beam is `20 µm` and radially symmetric, both `Width_X` and `Width_Y` should be set to 48.9898e-6.
 
 Shape
+
 - `Width_X`: Width of the beam in the X direction (m)
 - `Width_Y`: Width of the beam in the Y direction (m)
 - `Depth_Z`: Penetration depth of the beam (m)
 
 Intensity
+
 - `Power`: Power of energy source (W)
 - `Efficiency`: Absorption efficiency of beam; refer to literature for accurate values. Typically it is 0.35 for laser powder bed fusion (PBF) and 0.85 for electron beam PBF.
 
-NOTE: To use multiple heat sources, use the * to denote the wildcard (ex: “Beam.*.txt”). The program will start at “Beam.1.txt” then “Beam.2.txt” and keep going until “Beam.x.txt” does not exist. “Beam.x.txt” would be used with the path parameters found in “Path.x.txt”
+NOTE: To use multiple heat sources, use an asterisk (\*) to denote the wildcard (ex: “Beam.*.txt”). The program will start at “Beam.1.txt” then “Beam.2.txt” and keep going until “Beam.x.txt” does not exist. “Beam.x.txt” would be used with the path parameters found in “Path.x.txt”
 
 #### Path File
+
 This file dictate where and how the heat source travels. This file and all its components are necessary. An incomplete path file will cause failures. The format is different than other files and is in the form:
 `Mode	X(mm)	Y(mm)	Z(mm)	Pmod	Vel(m/s)/Time(s)`
 
 The Mode dictates how the heat source moves.
+
 - `Mode` = 0 is a line melt. X, Y, Z controls where the beam travels TO and the last parameter controls the constant speed of this melt.
 - `Mode` = 1 is a spot melt. X, Y, Z control the location of the spot melt and the last parameter controls the duration of this melt.
-	
 - `Pmod` is a power multiplier to the heat source. This is typically 0 or 1 to control the beam turning on and off. More advanced scan strategies have variable powers. In these cases, it’s generally best to let `Pmod` control the power and set the `Power` in the beam file to 1.
 
 Make sure that before a line melt, the starting point is correct! A raster pattern is best represented by alternating mode 1 and 0 where mode 1 is only there to set the start point and would have a Pmod of 0 and a short value for Time(s).
 
-NOTE: To use multiple heat sources, use the * to denote the wildcard (ex: “Path.*.txt”). The program will start at “Path.1.txt” then “Path.2.txt” and keep going until “Path.x.txt” does not exist. “Path.x.txt” would be used with the beam parameters found in “Beam.x.txt”
+NOTE: To use multiple heat sources, use an asterisk (\*) to denote the wildcard (ex: “Path.*.txt”). The program will start at “Path.1.txt” then “Path.2.txt” and keep going until “Path.x.txt” does not exist. “Path.x.txt” would be used with the beam parameters found in “Beam.x.txt”
 
 ### Option Files
+
 This set of files dictate everything having to do with the numerics of the simulation, such as the domain considered as well as various settings. These files are optional but it is highly recommended to understand how to change these for specific uses as they have a large impact on the speed and accuracy of the simulation. Default behavior is specified.
 
 #### Domain File
+
 This file contains information about the domain over which to calculate the temperature solution. It contains ways to control the resolution and bounds of the simulation domain but highly recommended to use. Boundary conditions can be set to provide somewhat nearly insulative boundaries using the method of images (just 1 iteration). For very thins walls (<1mm), this may not be enough to provide a completely insulative effect. Keep in mind that each point is calculated independently, so increasing the resolution by a factor of 2 in each direction will slow down the simulation by a factor of 8.
 
 - `X`
@@ -124,24 +142,24 @@ This file contains information about the domain over which to calculate the temp
   - `Res`: Resolution in the X-direction of the domain (either Res OR Num can be used)
   - `Num`: Number of unique X-values in the grid. If this is set to 1, only the Max value is used. (either Res OR Num can be used)
 - `Y`
-	`Min`
-	`Max`
-	`Res`
-	`Num`
+  - `Min`
+  - `Max`
+  - `Res`
+  - `Num`
 - `Z`
-	`Min`
-	`Max`: Typically set to 0 (where the top surface is)
-	`Res`
-	`Num`
+  - `Min`
+  - `Max`: Typically set to 0 (where the top surface is)
+  - `Res`
+  - `Num`
 - `BoundaryConditions`
   - `X_min`
   - `X_max`
   - `Y_min`
   - `Y_max`
 - `Custom`
-  - `File`: File which has a specific set (x,y,z) coordinates to be used for the domain Note: Using a point file negates any tracking modes (`Volume` and `Surface`), thus all points will always calculated.
+  - `File`: File which has a specific set (x,y,z) coordinates to be used for the domain. Note: Using a point file negates any tracking modes (`Volume` and `Surface`), thus all points will always calculated.
 
-Note: Not specifying Min or Max value results in the unspecified value being calculed via the path file(s) with a domain file 500µm buffer on each side and a 250µm simulated depth. Not specifying a Res or Num results in a default resolution of 50 µm.
+Note: Not specifying Min or Max value results in the unspecified value being calculed via the path file(s) with a domain file 500 µm buffer on each side and a 250 µm simulated depth. Not specifying a `Res` or `Num` results in a default resolution of 50 µm.
 
 #### Output File
 
@@ -173,6 +191,7 @@ This file contains all variables which can be output. A value of 0 indicated to 
   - `Hz`: z-component of normalized H
 
 #### Settings File
+
 This file contains all the tunable parameters for how the simulation is run. Generally, only `MaxThreads` (which speeds up the simulation if the hardware being used has at least that many available threads) needs to be changed.
 
 - Temperature
@@ -187,8 +206,9 @@ This file contains all the tunable parameters for how the simulation is run. Gen
   - `MaxThreads`: Number of threads to use for the simulation.
 
 ## Outputs
-Analysis of 3dThesis results can be done with a variety of methods (e.g. Python), but quick visualization is possible with Paraview.
 
-First ensure that the run finished successfully for `TestInputs/ParamInput.txt` the data should be found in `TestSim/Data/TestSim.Final.csv`. To view this file in Paraview, open it through the folder icon, in the top left, and then click the apply button. A table of data should appear on the right side of the screen. To convert this data to something visual, click on the file name on the right side of the screen to highlight it, then apply the `Table to Points` filter under `Filters->Alphabetical`.
+Analysis of 3dThesis results can be done with a variety of methods (e.g. Python), but quick visualization is possible with [Paraview](https://www.paraview.org/).
 
-On the left side, three dropdown menus should appear titled “X Column”, “Y Column”, and “Z Column”. Simply change these to be `x`, `y`, and `z`, click apply, and exit out of the tabular view of the data. Now at the top of the screen, locate the dropdown menu that says, “Solid Color.” Change this to `G` (the thermal solidification gradient). The point size and color scale can be changed using other options in the left menu (under the “Coloring” and “Styling” groups respectively).
+For an example visualization, first run the `examples/solidification` case and ensure that the run finished successfully. The data should be found in `examples/solidification/Data/examples/solidification/Data/solidification.Solidification.Final.0.csv`. To view this file in Paraview, open it through the folder icon, in the top left, and then click the apply button. A table of data should appear on the right side of the screen. To visualize this data in 3D, click on the file name on the Pipeline Browser (left side of the screen by default) to select the file, then apply the `Table to Points` filter under `Filters->Alphabetical`.
+
+Under the Properties tab (on the left side under the Pipeline Browser by default), three dropdown menus should appear titled “X Column”, “Y Column”, and “Z Column”. Simply change these to be `x`, `y`, and `z`, click apply, and exit out of the tabular view of the data. Now at the top of the screen, locate the dropdown menu that says, “Solid Color.” Change this to `G` (the thermal solidification gradient). The point size and color scale can be changed using other options in the left menu (under the “Coloring” and “Styling” groups respectively).

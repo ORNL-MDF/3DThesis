@@ -939,8 +939,7 @@ namespace Thesis::impl{
 					depth++;
 					// If at bottom of domain, break and display message
 					if (depth == sim.domain.znum) { 
-						std::cout << "WARNING::MAXIMUM EXCEEDED";
-						break; 
+						throw std::runtime_error("Error -> 3DThesis -> Maximum Depth Exceeded.");
 					}
 					// Find point number
 					const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - depth, sim);

@@ -37,7 +37,7 @@ namespace Thesis::impl
 		// Initializes the locks. They make sure only one thread can access a point at a time
 		void	SetLocks(vector<omp_lock_t>&, const Simdat&);
 		// Function to easily add integration segment to nodes
-		void	AddToNodes(Nodes&, const int_seg);
+		void	AddToNodes(Nodes&, const int_seg&);
 		// Function to combine nodes
 		void	CombineNodes(Nodes&, const Nodes&);
 		// Function to cleat all nodes
