@@ -29,7 +29,8 @@ namespace Thesis::Run{
         // Namespace declarations
         using namespace impl;
         using Stork::Structs::RDF_Dual;
-        using Stork::Structs::RDF;
+        using Stork::Structs::RDF_Header;
+        using Stork::Structs::RDF_Data;
         using std::vector;
         using std::string;
         using std::chrono::high_resolution_clock;
@@ -91,46 +92,53 @@ namespace Thesis::Run{
         // Run the Simulation
         Modes::Simulate(grid, sim);
 
-        // Collect results
-        vector<FloatType> RDF_data;
+        // Single pass to count and populate events
+        size_t numEvents = 0;
         const size_t numPoints = sim.domain.pnum;
-        #pragma omp parallel num_threads(sim.settings.thnum)
-        {
-            vector<FloatType> th_data;
-            #pragma omp for schedule(static)
-            for (int p = 0; p < numPoints; p++) {
-                if (grid.get_output_flag(p)) {
-                    const size_t pointNumEvents = grid.get_RDF_tm(p).size();
-                    for (size_t e = 0; e < pointNumEvents; e++) {
-                        th_data.push_back(grid.get_x(p));
-                        th_data.push_back(grid.get_y(p));
-                        th_data.push_back(grid.get_z(p));
-                        th_data.push_back(grid.get_RDF_tm(p)[e]);
-                        th_data.push_back(grid.get_RDF_tl(p)[e]);
-                        th_data.push_back(grid.get_RDF_cr(p)[e]);
-                    }
-                }
-            }
-            #pragma omp critical
-            {
-                RDF_data.insert(RDF_data.end(), th_data.begin(), th_data.end());
+
+        // First, count total events
+        for (size_t n = 0; n < numPoints; n++) {
+            if (grid.get_output_flag(n)) {
+                numEvents += grid.get_RDF_tm(n).size();
             }
         }
-        
-        // Make views
-        RDF_Dual<FloatType> DualRDF;           
-        DualRDF.SetSizes(RDF_data.size() / 6);
-        DualRDF.template MakeViews<host_space>();     
 
-        // Create a temporary unmanaged Kokkos::View from RDF_data
-        using floatType_hostView = Kokkos::View<FloatType*, layout, host_space>;
-        floatType_hostView unmanagedView_RDF(RDF_data.data(), RDF_data.size());
+        // Make structure with precise size
+        RDF_Dual<FloatType> RDF;
+        RDF.template MakeViews(numEvents);
+        RDF_Header<FloatType, host_space>& header = RDF.host_header;
+        RDF_Data<FloatType, host_space>& data = RDF.host_data;
 
-        // Perform the copy into the managed Kokkos view
-        Kokkos::deep_copy(DualRDF.hostRDF, unmanagedView_RDF);
+        // Set header (unchanged)
+        header.global_i0 = 0;
+        header.global_j0 = 0;
+        header.global_k0 = 0;
+        header.local_inum = sim.domain.xnum;
+        header.local_jnum = sim.domain.ynum;
+        header.local_knum = sim.domain.znum;
+        header.gridResolution = sim.domain.xres;
+
+        // Single pass population with index tracking
+        size_t currentEventIndex = 0;
+        for (size_t n = 0; n < numPoints; n++) {
+            if (grid.get_output_flag(n)) {
+                const auto& rdf_tm = grid.get_RDF_tm(n);
+                const auto& rdf_tl = grid.get_RDF_tl(n);
+                const auto& rdf_cr = grid.get_RDF_cr(n);
+                const size_t eSize = rdf_tm.size();
+                const uint32_t p = RDF.template ijk_to_p<host_space>(grid.get_i(n), grid.get_j(n), grid.get_k(n));
+                for (size_t e = 0; e < eSize; e++) {
+                    data.p(currentEventIndex) = p;
+                    data.tm(currentEventIndex) = rdf_tm[e];
+                    data.tl(currentEventIndex) = rdf_tl[e];
+                    data.cr(currentEventIndex) = rdf_cr[e];
+                    currentEventIndex++;
+                }
+            }
+        }
 
         // Return Kokkos data
-        return DualRDF;
+        return RDF;
     }
 
     template<typename FloatType>
@@ -139,7 +147,8 @@ namespace Thesis::Run{
         // Namespace declarations
         using namespace impl;
         using Stork::Structs::SRDF_Dual;
-        using Stork::Structs::SRDF;
+        using Stork::Structs::SRDF_Header;
+        using Stork::Structs::SRDF_Data;
         using std::vector;
         using std::string;
         using std::chrono::high_resolution_clock;
@@ -203,6 +212,9 @@ namespace Thesis::Run{
         vector<double>& ts = grid.get_RRDF_ts();
         vector<double>& Ts = grid.get_RRDF_Ts();
 
+        // Get number of events
+        const uint32_t numEvents = ts.size()/2;
+
         // Create a pointer to hold either the original or converted data
         FloatType* ts_data = nullptr;
         FloatType* Ts_data = nullptr;
@@ -232,23 +244,21 @@ namespace Thesis::Run{
         }
 
         // Initialize Kokoks views
-        SRDF_Dual<FloatType> DualSRDF;
-        SRDF<FloatType, host_space>& hostSRDF = DualSRDF.hostSRDF;
-        DualSRDF.size = static_cast<uint32_t>(ts.size()/2);
-        DualSRDF.Init_Host_Views_Header();
-        DualSRDF.Init_Host_Views_Data();
+        SRDF_Dual<FloatType> SRDF;
+        SRDF.template MakeViews(numEvents);
+        SRDF_Header<FloatType, host_space>& header = SRDF.host_header;
+        SRDF_Data<FloatType, host_space>& data = SRDF.host_data;
 
-        // Header extents
-        hostSRDF.i_num() = static_cast<uint32_t>(sim.domain.xnum);
-        hostSRDF.j_num() = static_cast<uint32_t>(sim.domain.ynum);
-        hostSRDF.k_num() = static_cast<uint32_t>(sim.domain.znum);
-
-        // Header floats
-        hostSRDF.x0() = static_cast<FloatType>(sim.domain.xmin);
-        hostSRDF.y0() = static_cast<FloatType>(sim.domain.ymin);
-        hostSRDF.z0() = static_cast<FloatType>(sim.domain.zmin);
-        hostSRDF.res() = static_cast<FloatType>(sim.domain.xres);
-        hostSRDF.T_liq() = static_cast<FloatType>(sim.material.T_liq);
+        // TODO::MPI DECOMPOSITION AFFECTS GLOBAL i0, etc.
+        // Set up header
+        header.global_i0 = 0;
+        header.global_j0 = 0;
+        header.global_k0 = 0;
+        header.local_inum() = static_cast<uint32_t>(sim.domain.xnum);
+        header.local_jnum() = static_cast<uint32_t>(sim.domain.ynum);
+        header.local_knum() = static_cast<uint32_t>(sim.domain.znum);
+        header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
+        header.T_critical() = static_cast<FloatType>(sim.material.T_liq);
 
         // Make unmanaged views
         using uint32_hostView = Kokkos::View<uint32_t*, layout, host_space>;
@@ -256,31 +266,26 @@ namespace Thesis::Run{
         uint32_hostView unmanagedView_cellIdxs(idxs.data(), idxs.size());
         floatType_hostView unmanagedView_t(ts_data, ts.size());
         floatType_hostView unmanagedView_T(Ts_data, Ts.size());
-
+        
         // Convert i,j,k -> p and store value
         Kokkos::parallel_for(
         "STORK - <i,j,k> to <p>",
-        Kokkos::RangePolicy<host_space>(0, DualSRDF.size),
+        Kokkos::RangePolicy<host_space>(0, numEvents),
         KOKKOS_LAMBDA(const uint32_t n)
-            {
-                // Set references
-                const uint32_t& ynum = hostSRDF.j_num();
-                const uint32_t& znum = hostSRDF.k_num();
-                // Get indexes
-                const uint32_t i = unmanagedView_cellIdxs(3*n+0);
-                const uint32_t j = unmanagedView_cellIdxs(3*n+1);
-                const uint32_t k = unmanagedView_cellIdxs(3*n+2);
-                // Convert to 1D
-                hostSRDF.cellNum_view(n) = i*ynum*znum + j*znum + k;
+            {   
+                const uint32_t& i = unmanagedView_cellIdxs(3*n+0);
+                const uint32_t& j = unmanagedView_cellIdxs(3*n+1);
+                const uint32_t& k = unmanagedView_cellIdxs(3*n+2);
+                data.p(n) = SRDF.template ijk_to_p<host_space>(i,j,k);
             }
         );
 
         // Copy rest to to managed views
-        Kokkos::deep_copy(hostSRDF.times_view,unmanagedView_t);
-        Kokkos::deep_copy(hostSRDF.thermals_view,unmanagedView_T);
+        Kokkos::deep_copy(data.times_view, unmanagedView_t);
+        Kokkos::deep_copy(data.thermals_view, unmanagedView_T);
 
         // Return Kokkos data
-        return DualSRDF;
+        return SRDF;
     }
 
 }
