@@ -105,18 +105,22 @@ namespace Thesis::Run{
 
         // Make structure with precise size
         RDF_Dual<FloatType> RDF;
-        RDF.template MakeViews(numEvents);
+        RDF.template MakeViews<host_space>(numEvents);
         RDF_Header<FloatType, host_space>& header = RDF.host_header;
         RDF_Data<FloatType, host_space>& data = RDF.host_data;
 
-        // Set header (unchanged)
-        header.global_i0 = 0;
-        header.global_j0 = 0;
-        header.global_k0 = 0;
-        header.local_inum = sim.domain.xnum;
-        header.local_jnum = sim.domain.ynum;
-        header.local_knum = sim.domain.znum;
-        header.gridResolution = sim.domain.xres;
+        // TODO::MPI DECOMPOSITION AFFECTS GLOBAL i0, etc.
+        // Set up header
+        header.global_i0() = static_cast<uint32_t>(0);
+        header.global_j0() = static_cast<uint32_t>(0);
+        header.global_k0() = static_cast<uint32_t>(0);
+        header.local_inum() = static_cast<uint32_t>(sim.domain.xnum);
+        header.local_jnum() = static_cast<uint32_t>(sim.domain.ynum);
+        header.local_knum() = static_cast<uint32_t>(sim.domain.znum);
+        header.global_x0() = static_cast<FloatType>(sim.domain.xmin);
+        header.global_y0() = static_cast<FloatType>(sim.domain.ymin);
+        header.global_z0() = static_cast<FloatType>(sim.domain.zmin);
+        header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
 
         // Single pass population with index tracking
         size_t currentEventIndex = 0;
@@ -245,18 +249,21 @@ namespace Thesis::Run{
 
         // Initialize Kokoks views
         SRDF_Dual<FloatType> SRDF;
-        SRDF.template MakeViews(numEvents);
+        SRDF.template MakeViews<host_space>(numEvents);
         SRDF_Header<FloatType, host_space>& header = SRDF.host_header;
         SRDF_Data<FloatType, host_space>& data = SRDF.host_data;
 
         // TODO::MPI DECOMPOSITION AFFECTS GLOBAL i0, etc.
         // Set up header
-        header.global_i0 = 0;
-        header.global_j0 = 0;
-        header.global_k0 = 0;
+        header.global_i0() = static_cast<uint32_t>(0);
+        header.global_j0() = static_cast<uint32_t>(0);
+        header.global_k0() = static_cast<uint32_t>(0);
         header.local_inum() = static_cast<uint32_t>(sim.domain.xnum);
         header.local_jnum() = static_cast<uint32_t>(sim.domain.ynum);
         header.local_knum() = static_cast<uint32_t>(sim.domain.znum);
+        header.global_x0() = static_cast<FloatType>(sim.domain.xmin);
+        header.global_y0() = static_cast<FloatType>(sim.domain.ymin);
+        header.global_z0() = static_cast<FloatType>(sim.domain.zmin);
         header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
         header.T_critical() = static_cast<FloatType>(sim.material.T_liq);
 
@@ -266,7 +273,7 @@ namespace Thesis::Run{
         uint32_hostView unmanagedView_cellIdxs(idxs.data(), idxs.size());
         floatType_hostView unmanagedView_t(ts_data, ts.size());
         floatType_hostView unmanagedView_T(Ts_data, Ts.size());
-        
+
         // Convert i,j,k -> p and store value
         Kokkos::parallel_for(
         "STORK - <i,j,k> to <p>",
