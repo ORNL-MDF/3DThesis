@@ -29,7 +29,7 @@ namespace Thesis::Run{
         // Namespace declarations
         using namespace impl;
         using Stork::Structs::RDF_Dual;
-        using Stork::Structs::RDF_Header;
+        using Stork::Structs::RegularGrid_Header;
         using Stork::Structs::RDF_Data;
         using std::vector;
         using std::string;
@@ -105,8 +105,8 @@ namespace Thesis::Run{
 
         // Make structure with precise size
         RDF_Dual<FloatType> RDF;
-        RDF.template MakeViews<host_space>(numEvents);
-        RDF_Header<FloatType, host_space>& header = RDF.host_header;
+        RDF.template Make_Data_Views<host_space>(numEvents);
+        RegularGrid_Header<FloatType, host_space>& header = RDF.host_header;
         RDF_Data<FloatType, host_space>& data = RDF.host_data;
 
         // TODO::MPI DECOMPOSITION AFFECTS GLOBAL i0, etc.
@@ -151,7 +151,7 @@ namespace Thesis::Run{
         // Namespace declarations
         using namespace impl;
         using Stork::Structs::SRDF_Dual;
-        using Stork::Structs::SRDF_Header;
+        using Stork::Structs::RegularGrid_Header;
         using Stork::Structs::SRDF_Data;
         using std::vector;
         using std::string;
@@ -249,8 +249,8 @@ namespace Thesis::Run{
 
         // Initialize Kokoks views
         SRDF_Dual<FloatType> SRDF;
-        SRDF.template MakeViews<host_space>(numEvents);
-        SRDF_Header<FloatType, host_space>& header = SRDF.host_header;
+        SRDF.template Make_Data_Views<host_space>(numEvents);
+        RegularGrid_Header<FloatType, host_space>& header = SRDF.host_header;
         SRDF_Data<FloatType, host_space>& data = SRDF.host_data;
 
         // TODO::MPI DECOMPOSITION AFFECTS GLOBAL i0, etc.
@@ -265,7 +265,7 @@ namespace Thesis::Run{
         header.global_y0() = static_cast<FloatType>(sim.domain.ymin);
         header.global_z0() = static_cast<FloatType>(sim.domain.zmin);
         header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
-        header.T_critical() = static_cast<FloatType>(sim.material.T_liq);
+        SRDF.T_critical = static_cast<FloatType>(sim.material.T_liq);
 
         // Make unmanaged views
         using uint32_hostView = Kokkos::View<uint32_t*, layout, host_space>;
@@ -283,7 +283,7 @@ namespace Thesis::Run{
                 const uint32_t& i = unmanagedView_cellIdxs(3*n+0);
                 const uint32_t& j = unmanagedView_cellIdxs(3*n+1);
                 const uint32_t& k = unmanagedView_cellIdxs(3*n+2);
-                data.p(n) = SRDF.template ijk_to_p<host_space>(i,j,k);
+                data.p(n) = header.ijk_to_p(i,j,k);
             }
         );
 
