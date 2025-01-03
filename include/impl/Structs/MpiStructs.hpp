@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Stork_Core.hpp>
+
 #include <mpi.h>
 #include <string>
 
@@ -11,6 +13,7 @@ using std::string;
 namespace Thesis::impl
 {
 
+    template<typename FloatType>
     class ThesisMPI{
     private:
         // Communication Stuff
@@ -53,6 +56,9 @@ namespace Thesis::impl
         int dims[2] = {0,0};    // Dimensionality of decomposition
         int coords[2] = {0,0};   // Own coordinates
 
+        // Stork Header
+        Stork::Structs::RegularGrid_Header<FloatType, host_space> header;
+
         // Name addition
         string name;
 
@@ -75,13 +81,30 @@ namespace Thesis::impl
             const int j = coords[1];
 
             // Find local domain bounds (no overlap for else)
-            if (sim.param.mode=="Stork" || sim.settings.mpi_overlap){ 
+            if (sim.param.tracking=="Stork" || sim.settings.mpi_overlap){ 
                 // Find local domain bounds (overlap for stork)
-                i_min = ((sim.domain.xnum-1)*i)/I;
-                i_max = ((sim.domain.xnum-1)*(i+1))/I;
+                // Note:: Doesn't just allow for all points to be filled but overlaps the interpolated points by (so 1 to 1 data handoff is valid)
+                // i_min = ((sim.domain.xnum-1)*i)/I;
+                // i_max = ((sim.domain.xnum-1)*(i+1))/I + (i!=(I-1));
 
-                j_min = ((sim.domain.ynum-1)*j)/J;
-                j_max = ((sim.domain.ynum-1)*(j+1))/J;
+                // j_min = ((sim.domain.ynum-1)*j)/J;
+                // j_max = ((sim.domain.ynum-1)*(j+1))/J + (j!=(J-1));
+                // TODO::DEBUG
+                sim.param.radiusCheck = 3;
+                if (rank==0){
+                    i_min = 0;
+                    i_max = (sim.domain.xnum-1)-50;
+
+                    j_min = 0;
+                    j_max = (sim.domain.ynum-1);
+                }
+                else{
+                    i_min = (sim.domain.xnum-1)-51;
+                    i_max = (sim.domain.xnum-1);
+
+                    j_min = 0;
+                    j_max = (sim.domain.ynum-1);
+                }
             }
             else{
                 // Find local domain bounds (no overlap for else)
@@ -91,6 +114,14 @@ namespace Thesis::impl
                 j_min = ((sim.domain.ynum-1)*j)/J + (j!=0);
                 j_max = ((sim.domain.ynum-1)*(j+1))/J;
             }
+
+            // Set header info
+            header.global_i0() = i_min;
+            header.global_j0() = j_min;
+            header.global_x0() = sim.domain.xmin;
+            header.global_y0() = sim.domain.ymin;
+            header.local_inum() = 1+(i_max-i_min);
+            header.local_jnum() = 1+(j_max-j_min);
 
             // Find local domain bounds (no)
             const double xmin = sim.domain.xmin + sim.domain.xres*i_min;

@@ -5,8 +5,10 @@ project(Thesis LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find MPI
-find_package(MPI REQUIRED COMPONENTS CXX)
+# Find MPI if enabled
+if(THESIS_ENABLE_MPI)
+  find_package(MPI REQUIRED COMPONENTS CXX)
+endif()
 
 # Find Kokkos
 find_package(Kokkos REQUIRED)
@@ -33,9 +35,13 @@ add_library(Thesis ${SRC_FILES})
 target_link_libraries(Thesis
     PUBLIC
     Stork::Stork
-    MPI::MPI_CXX
     Kokkos::kokkos
 )
+
+# Conditionally link MPI
+if(THESIS_ENABLE_MPI)
+  target_link_libraries(Thesis PUBLIC MPI::MPI_CXX)
+endif()
 
 # Include directories for Thesis
 target_include_directories(Thesis PUBLIC

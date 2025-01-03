@@ -11,7 +11,7 @@
 
 #include <Thesis_Core.hpp>
 
-#ifdef Thesis_ENABLE_MPI
+#ifdef THESIS_ENABLE_MPI
 int main(int argc, char * argv[]) {	
 	// Initialize MPI
     MPI_Init(&argc, &argv);

@@ -16,9 +16,8 @@
 #include "impl/Structs/Grid.hpp"
 #include "ThesisConfig.h"
 
-#ifdef Thesis_ENABLE_MPI
-#include "MpiStructs.h"
-#include <mpi.h>
+#ifdef THESIS_ENABLE_MPI
+    #include "impl/Structs/MpiStructs.hpp"
 #endif
 
 namespace Thesis::Run{
@@ -47,10 +46,11 @@ namespace Thesis::Run{
         Simdat sim;
         sim.print = false;
 
-    #ifdef Thesis_ENABLE_MPI
+    #ifdef THESIS_ENABLE_MPI
         // Initialize MPI
-        ThesisMPI mpi(MPI_COMM_WORLD);
-        mpi.setPrint(sim);
+        ThesisMPI<FloatType> mpi(MPI_COMM_WORLD);
+        // TODO::SETTING
+        // mpi.setPrint(sim);
     #endif
 
         // Get names of intput files
@@ -59,10 +59,35 @@ namespace Thesis::Run{
         // Read input files and set simulation parameters
         Init::ReadSimParams(sim);
 
-    #ifdef Thesis_ENABLE_MPI
-        // Make local bounds and set local rank
-        mpi.makeLocalBounds(sim);
-    #endif
+        // Make structure with precise size
+        RDF_Dual<FloatType> RDF;
+        RegularGrid_Header<FloatType, host_space>& header = RDF.host_header;
+
+        // Set origin point before decomposition changes them
+        header.global_x0() = static_cast<FloatType>(sim.domain.xmin);
+        header.global_y0() = static_cast<FloatType>(sim.domain.ymin);
+        header.global_z0() = static_cast<FloatType>(sim.domain.zmin);
+
+        // Also set header components which are independent of composition
+        header.global_k0() = static_cast<uint32_t>(0);  
+        header.local_knum() = static_cast<uint32_t>(sim.domain.znum);
+        header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
+
+        // Set header components which may be updated
+        header.global_i0() = 0;
+        header.global_j0() = 0;
+        header.local_inum() = sim.domain.xnum;
+        header.local_jnum() = sim.domain.ynum;
+        
+        #ifdef THESIS_ENABLE_MPI
+            // Make local bounds and set local rank
+            mpi.makeLocalBounds(sim);
+            // Update header
+            header.global_i0() = mpi.header.global_i0();
+            header.global_j0() = mpi.header.global_j0();
+            header.local_inum() = mpi.header.local_inum();
+            header.local_jnum() = mpi.header.local_jnum();
+        #endif
 
         // Initialize grid
         Grid grid(sim); 
@@ -103,24 +128,10 @@ namespace Thesis::Run{
             }
         }
 
-        // Make structure with precise size
-        RDF_Dual<FloatType> RDF;
+        // Make Stork Data Holders
         RDF.template Make_Data_Views<host_space>(numEvents);
-        RegularGrid_Header<FloatType, host_space>& header = RDF.host_header;
+        RDF.numEvents = numEvents;
         RDF_Data<FloatType, host_space>& data = RDF.host_data;
-
-        // TODO::MPI DECOMPOSITION AFFECTS GLOBAL i0, etc.
-        // Set up header
-        header.global_i0() = static_cast<uint32_t>(0);
-        header.global_j0() = static_cast<uint32_t>(0);
-        header.global_k0() = static_cast<uint32_t>(0);
-        header.local_inum() = static_cast<uint32_t>(sim.domain.xnum);
-        header.local_jnum() = static_cast<uint32_t>(sim.domain.ynum);
-        header.local_knum() = static_cast<uint32_t>(sim.domain.znum);
-        header.global_x0() = static_cast<FloatType>(sim.domain.xmin);
-        header.global_y0() = static_cast<FloatType>(sim.domain.ymin);
-        header.global_z0() = static_cast<FloatType>(sim.domain.zmin);
-        header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
 
         // Single pass population with index tracking
         size_t currentEventIndex = 0;
@@ -169,10 +180,11 @@ namespace Thesis::Run{
         Simdat sim;
         sim.print = false;
 
-    #ifdef Thesis_ENABLE_MPI
+    #ifdef THESIS_ENABLE_MPI
         // Initialize MPI
-        ThesisMPI mpi(MPI_COMM_WORLD);
-        mpi.setPrint(sim);
+        ThesisMPI<FloatType> mpi(MPI_COMM_WORLD);
+        // TODO::SETTING
+        // mpi.setPrint(sim);
     #endif
 
         // Get names of intput files
@@ -181,10 +193,38 @@ namespace Thesis::Run{
         // Read input files and set simulation parameters
         Init::ReadSimParams(sim);
 
-    #ifdef Thesis_ENABLE_MPI
-        // Make local bounds and set local rank
-        mpi.makeLocalBounds(sim);
-    #endif
+        // Initialize Kokoks views
+        SRDF_Dual<FloatType> SRDF;
+        RegularGrid_Header<FloatType, host_space>& header = SRDF.host_header;
+
+        // Set origin point before decomposition changes them
+        header.global_x0() = static_cast<FloatType>(sim.domain.xmin);
+        header.global_y0() = static_cast<FloatType>(sim.domain.ymin);
+        header.global_z0() = static_cast<FloatType>(sim.domain.zmin);
+
+        // Also set header components which are independent of composition
+        header.global_k0() = static_cast<uint32_t>(0);  
+        header.local_knum() = static_cast<uint32_t>(sim.domain.znum);
+        header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
+        SRDF.T_critical = static_cast<FloatType>(sim.material.T_liq);
+
+        // Set header components which may be updated
+        header.global_i0() = 0;
+        header.global_j0() = 0;
+        header.local_inum() = sim.domain.xnum;
+        header.local_jnum() = sim.domain.ynum;
+        
+        #ifdef THESIS_ENABLE_MPI
+            // Make local bounds and set local rank
+            mpi.makeLocalBounds(sim);
+            // Update header
+            header.global_i0() = mpi.header.global_i0();
+            header.global_j0() = mpi.header.global_j0();
+            header.local_inum() = mpi.header.local_inum();
+            header.local_jnum() = mpi.header.local_jnum();
+            // TODO::DEBUG
+            std::cout << "MPI Enabled" << std::endl;
+        #endif
 
         // Initialize grid
         Grid grid(sim); 
@@ -210,14 +250,19 @@ namespace Thesis::Run{
 
         // Run the Simulation
         Modes::Simulate(grid, sim);
-
+        
         // Set references to data
         vector<uint32_t>& idxs = grid.get_RRDF_idxs();
         vector<double>& ts = grid.get_RRDF_ts();
         vector<double>& Ts = grid.get_RRDF_Ts();
 
         // Get number of events
-        const uint32_t numEvents = ts.size()/2;
+        const uint32_t numSnapshots = ts.size()/2;
+
+        // Initialize Stork Data
+        SRDF.template Make_Data_Views<host_space>(numSnapshots);
+        SRDF.numSnaps = numSnapshots;
+        SRDF_Data<FloatType, host_space>& data = SRDF.host_data;
 
         // Create a pointer to hold either the original or converted data
         FloatType* ts_data = nullptr;
@@ -247,26 +292,6 @@ namespace Thesis::Run{
             Ts_data = Ts_converted.data();
         }
 
-        // Initialize Kokoks views
-        SRDF_Dual<FloatType> SRDF;
-        SRDF.template Make_Data_Views<host_space>(numEvents);
-        RegularGrid_Header<FloatType, host_space>& header = SRDF.host_header;
-        SRDF_Data<FloatType, host_space>& data = SRDF.host_data;
-
-        // TODO::MPI DECOMPOSITION AFFECTS GLOBAL i0, etc.
-        // Set up header
-        header.global_i0() = static_cast<uint32_t>(0);
-        header.global_j0() = static_cast<uint32_t>(0);
-        header.global_k0() = static_cast<uint32_t>(0);
-        header.local_inum() = static_cast<uint32_t>(sim.domain.xnum);
-        header.local_jnum() = static_cast<uint32_t>(sim.domain.ynum);
-        header.local_knum() = static_cast<uint32_t>(sim.domain.znum);
-        header.global_x0() = static_cast<FloatType>(sim.domain.xmin);
-        header.global_y0() = static_cast<FloatType>(sim.domain.ymin);
-        header.global_z0() = static_cast<FloatType>(sim.domain.zmin);
-        header.gridResolution() = static_cast<FloatType>(sim.domain.xres);
-        SRDF.T_critical = static_cast<FloatType>(sim.material.T_liq);
-
         // Make unmanaged views
         using uint32_hostView = Kokkos::View<uint32_t*, layout, host_space>;
         using floatType_hostView = Kokkos::View<FloatType*, layout, host_space>;
@@ -277,7 +302,7 @@ namespace Thesis::Run{
         // Convert i,j,k -> p and store value
         Kokkos::parallel_for(
         "STORK - <i,j,k> to <p>",
-        Kokkos::RangePolicy<host_space>(0, numEvents),
+        Kokkos::RangePolicy<host_space>(0, numSnapshots),
         KOKKOS_LAMBDA(const uint32_t n)
             {   
                 const uint32_t& i = unmanagedView_cellIdxs(3*n+0);

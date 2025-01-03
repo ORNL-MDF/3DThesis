@@ -14,9 +14,8 @@
 #include "impl/Structs/Grid.hpp"
 #include "ThesisConfig.h"
 
-#ifdef Thesis_ENABLE_MPI
-#include "impl/Structs/MpiStructs.h"
-#include <mpi.h>
+#ifdef THESIS_ENABLE_MPI
+    #include "impl/Structs/MpiStructs.hpp"
 #endif
 
 namespace Thesis::Run{
@@ -40,10 +39,11 @@ namespace Thesis::Run{
         // Initialize struct for simulation parameters and quadrature
         Simdat sim;
 
-    #ifdef Thesis_ENABLE_MPI
+    #ifdef THESIS_ENABLE_MPI
         // Initialize MPI
-        ThesisMPI mpi(MPI_COMM_WORLD);
-        mpi.setPrint(sim);
+        ThesisMPI<double> mpi(MPI_COMM_WORLD);
+        // TODO::SETTING
+        // mpi.setPrint(sim);
     #endif
 
         // Get names of intput files
@@ -52,7 +52,7 @@ namespace Thesis::Run{
         // Read input files and set simulation parameters
         Init::ReadSimParams(sim);
 
-    #ifdef Thesis_ENABLE_MPI
+    #ifdef THESIS_ENABLE_MPI
         // Make local bounds and set local rank
         mpi.makeLocalBounds(sim);
     #endif
@@ -83,7 +83,7 @@ namespace Thesis::Run{
         auto start_out = high_resolution_clock::now();
 
     std::string rank_name = "";
-    #ifdef Thesis_ENABLE_MPI
+    #ifdef THESIS_ENABLE_MPI
     if (sim.mpi)
         rank_name = "." + mpi.name;
     #endif
