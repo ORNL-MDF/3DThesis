@@ -30,11 +30,11 @@ namespace Thesis::impl{
 			const Beam& beam = sim.beams[pathNum];
 
 			// Out of bounds check
-			const double t_sub = (sim.param.radiusCheck*sim.param.radiusCheck-1)*beam.ax*beam.ax/(12*sim.material.a);
-			const double t_start = (t_end_norm-t_sub<0) ? 0 : t_end_norm-t_sub;
+			const double t_sub = (sim.param.radiusCheck*sim.param.radiusCheck-1)*(beam.ax*beam.ax)/(12.0*sim.material.a);
+			const double t_start = (t_end_norm-t_sub<0.0) ? 0.0 : t_end_norm-t_sub;
 			const double t_end = t_end_norm;
 			const double rCheck2 = sim.param.radiusCheck*sim.param.radiusCheck*beam.ax*beam.ax;
-			
+
 			// Set perimeter lambda
 			auto add_perimeter_points = [&](int fixed_dim, bool is_x_fixed, int min_range, int max_range, double x, double y) {
 				for (int var = min_range; var < max_range; ++var) 
@@ -46,7 +46,9 @@ namespace Thesis::impl{
 					double dx = (x_perim - x);
 					double dy = (y_perim - y);
 					if (dx * dx + dy * dy < rCheck2) {
-						int p = (sim.domain.znum - 1) + sim.domain.znum * j + sim.domain.znum * sim.domain.ynum * i;
+						int p = Util::ijk_to_p(i,j,sim.domain.znum-1,sim);
+						// TODO::DEBUG
+						//int p = (sim.domain.znum - 1) + sim.domain.znum * j + sim.domain.znum * sim.domain.ynum * i;
 						if (!grid.get_T_calc_flag(p)) {
 							test_pts.push_back(p);
 							grid.set_T_calc_flag(true, p);
@@ -126,7 +128,7 @@ namespace Thesis::impl{
 				const int z_grid_num = sim.domain.znum-1;
 
 				// If out of bounds, will be covered by perimeter tracker
-				if (x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum+1){ continue;}
+				if (x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum-1){ continue;}
 				
 				// Vector of test points
 				for (int dx=0;dx<=1;dx++){
@@ -156,31 +158,23 @@ namespace Thesis::impl{
 				int y_grid_num = static_cast<int>(std::floor((current_beam.yb - sim.domain.ymin) / sim.domain.yres));
 				const int z_grid_num = sim.domain.znum-1;
 
-				// Bring close to grid
-				if (x_grid_num < 0){x_grid_num=-1;}
-				if (x_grid_num > sim.domain.xnum - 1){ x_grid_num = sim.domain.xnum - 1;}
+				// If out of bounds, will be covered by perimeter tracker
+				if (x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum-1){ continue;}
 
-				// Bring close to grid
-				if (y_grid_num < 0){y_grid_num=-1;}
-				if (y_grid_num > sim.domain.xnum - 1){ y_grid_num = sim.domain.ynum - 1;}
-
-				// Only do if inside domain
-				if (!(x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum+1)){
-					// Vector of test points
-					for (int dx=0;dx<=1;dx++){
-						for (int dy=0;dy<=1;dy++){
-							const int x_grid = (x_grid_num + dx);
-							const int y_grid = (y_grid_num + dy);
-							const bool i_ob = (x_grid<0 || x_grid>sim.domain.xnum-1);
-							const bool j_ob = (y_grid<0 || y_grid>sim.domain.ynum-1);
-							if (i_ob || j_ob) { continue;}
-							const int p = (z_grid_num) + sim.domain.znum * y_grid + sim.domain.znum * sim.domain.ynum * x_grid;
-							if (!grid.get_T_calc_flag(p))
-							{
-								test_pts.push_back(p);
-								grid.set_T_calc_flag(true, p);
-							}	
-						}
+				// Vector of test points
+				for (int dx=0;dx<=1;dx++){
+					for (int dy=0;dy<=1;dy++){
+						const int x_grid = (x_grid_num + dx);
+						const int y_grid = (y_grid_num + dy);
+						const bool i_ob = (x_grid<0 || x_grid>sim.domain.xnum-1);
+						const bool j_ob = (y_grid<0 || y_grid>sim.domain.ynum-1);
+						if (i_ob || j_ob) { continue;}
+						const int p = (z_grid_num) + sim.domain.znum * y_grid + sim.domain.znum * sim.domain.ynum * x_grid;
+						if (!grid.get_T_calc_flag(p))
+						{
+							test_pts.push_back(p);
+							grid.set_T_calc_flag(true, p);
+						}	
 					}
 				}
 			}	
