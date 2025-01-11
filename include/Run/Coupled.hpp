@@ -222,8 +222,6 @@ namespace Thesis::Run{
             header.global_j0() = mpi.header.global_j0();
             header.local_inum() = mpi.header.local_inum();
             header.local_jnum() = mpi.header.local_jnum();
-            // TODO::DEBUG
-            std::cout << "MPI Enabled" << std::endl;
         #endif
 
         // Initialize grid
@@ -305,10 +303,18 @@ namespace Thesis::Run{
         Kokkos::RangePolicy<host_space>(0, numSnapshots),
         KOKKOS_LAMBDA(const uint32_t n)
             {   
+                // Get local ijk
                 const uint32_t& i = unmanagedView_cellIdxs(3*n+0);
                 const uint32_t& j = unmanagedView_cellIdxs(3*n+1);
                 const uint32_t& k = unmanagedView_cellIdxs(3*n+2);
-                data.p(n) = header.ijk_to_p(i,j,k);
+                const uint32_t LOCAL_ijk[3] = {i,j,k};
+
+                // Convert to local p
+                uint32_t LOCAL_p;
+                header.LOCAL_ijk_to_LOCAL_p(LOCAL_p, LOCAL_ijk);
+
+                // Store value
+                data.p(n) = LOCAL_p;
             }
         );
 

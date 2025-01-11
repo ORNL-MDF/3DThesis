@@ -84,27 +84,11 @@ namespace Thesis::impl
             if (sim.param.tracking=="Stork" || sim.settings.mpi_overlap){ 
                 // Find local domain bounds (overlap for stork)
                 // Note:: Doesn't just allow for all points to be filled but overlaps the interpolated points by (so 1 to 1 data handoff is valid)
-                // i_min = ((sim.domain.xnum-1)*i)/I;
-                // i_max = ((sim.domain.xnum-1)*(i+1))/I + (i!=(I-1));
+                i_min = ((sim.domain.xnum-1)*i)/I;
+                i_max = ((sim.domain.xnum-1)*(i+1))/I + (i!=(I-1));
 
-                // j_min = ((sim.domain.ynum-1)*j)/J;
-                // j_max = ((sim.domain.ynum-1)*(j+1))/J + (j!=(J-1));
-                // TODO::DEBUG
-                sim.param.radiusCheck = 3;
-                if (rank==0){
-                    i_min = 0;
-                    i_max = (sim.domain.xnum-1)-50;
-
-                    j_min = 0;
-                    j_max = (sim.domain.ynum-1);
-                }
-                else{
-                    i_min = (sim.domain.xnum-1)-51;
-                    i_max = (sim.domain.xnum-1);
-
-                    j_min = 0;
-                    j_max = (sim.domain.ynum-1);
-                }
+                j_min = ((sim.domain.ynum-1)*j)/J;
+                j_max = ((sim.domain.ynum-1)*(j+1))/J + (j!=(J-1));
             }
             else{
                 // Find local domain bounds (no overlap for else)

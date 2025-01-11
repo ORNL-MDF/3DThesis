@@ -46,9 +46,7 @@ namespace Thesis::impl{
 					double dx = (x_perim - x);
 					double dy = (y_perim - y);
 					if (dx * dx + dy * dy < rCheck2) {
-						int p = Util::ijk_to_p(i,j,sim.domain.znum-1,sim);
-						// TODO::DEBUG
-						//int p = (sim.domain.znum - 1) + sim.domain.znum * j + sim.domain.znum * sim.domain.ynum * i;
+						const int p = Util::ijk_to_p(i,j,sim.domain.znum-1,sim);
 						if (!grid.get_T_calc_flag(p)) {
 							test_pts.push_back(p);
 							grid.set_T_calc_flag(true, p);

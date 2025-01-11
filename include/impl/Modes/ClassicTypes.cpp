@@ -61,8 +61,8 @@ namespace Thesis::impl{
 		// Integration information
 		QuadDat quad;
 		Nodes& nodes = quad.cur_nodes;
-		Nodes& nodes_last = quad.prev_nodes;
-		vector<Nodes>& parNodes = quad.par_nodes;
+		// Nodes& nodes_last = quad.prev_nodes;
+		// vector<Nodes>& parNodes = quad.par_nodes;
 		vector<int>& start_seg = quad.start_seg;
 
 		// Make sure every point outputs temperature
@@ -115,8 +115,8 @@ namespace Thesis::impl{
 		// Integration information
 		QuadDat quad;
 		Nodes& nodes = quad.cur_nodes;
-		Nodes& nodes_last = quad.prev_nodes;
-		vector<Nodes>& parNodes = quad.par_nodes;
+		// Nodes& nodes_last = quad.prev_nodes;
+		// vector<Nodes>& parNodes = quad.par_nodes;
 		vector<int>& start_seg = quad.start_seg;
 
 		// Vector of Liquid Point numbers
@@ -225,8 +225,8 @@ namespace Thesis::impl{
 		// Integration information
 		QuadDat quad;
 		Nodes& nodes = quad.cur_nodes;
-		Nodes& nodes_last = quad.prev_nodes;
-		vector<Nodes>& parNodes = quad.par_nodes;
+		// Nodes& nodes_last = quad.prev_nodes;
+		// vector<Nodes>& parNodes = quad.par_nodes;
 		vector<int>& start_seg = quad.start_seg;
 		
 		// Vector of Liquid Point numbers
@@ -406,7 +406,7 @@ namespace Thesis::impl{
 		// Integration information
 		QuadDat quad;
 		Nodes& nodes = quad.cur_nodes;
-		Nodes& nodes_last = quad.prev_nodes;
+		// Nodes& nodes_last = quad.prev_nodes;
 		vector<Nodes>& parNodes = quad.par_nodes;
 		vector<int>& start_seg = quad.start_seg;
 
@@ -480,14 +480,13 @@ namespace Thesis::impl{
 		// Integration information
 		QuadDat quad;
 		Nodes& nodes = quad.cur_nodes;
-		Nodes& nodes_last = quad.prev_nodes;
+		// Nodes& nodes_last = quad.prev_nodes;
 		vector<Nodes>& parNodes = quad.par_nodes;
 		vector<int>& start_seg = quad.start_seg;
 
 		// Set initial time, iteration, and number of liquid points
 		double t = 0.0;
 		int itert = 0;
-		int liq_num = 0;
 		
 		while (true) {
 			Out::Progress(print_prog_last, sim, itert);
@@ -599,7 +598,7 @@ namespace Thesis::impl{
 		vector<Nodes>& parNodes = quad.par_nodes;
 		vector<int>& start_seg = quad.start_seg;
 
-		int itert = 0, liq_num = 0;
+		int itert = 0;
 		double t = 0.0;
 
 		while (true) {
@@ -766,7 +765,7 @@ namespace Thesis::impl{
 		vector<int> c_relevant;
 		c_relevant.reserve(c_pnum);
 
-		int itert = 0, liq_num = 0;
+		int itert = 0;
 		double t = 0.0;
 
 		while (true) {
