@@ -404,7 +404,7 @@ namespace Thesis::impl
 		Init::SetValues(sim.param.tracking, values[0][0], string("None"), "Tracking", 0, sim.print);
 		Init::SetValues(sim.param.dt, values[0][1], 1e-5, "Timestep", 0, sim.print);
 		Init::SetValues(sim.param.out_freq, values[0][2], INT_MAX, "Output Frequency", 0, sim.print);
-		Init::SetValues(sim.param.radiusCheck, values[0][3], 1.0, "Check Radius", 0, sim.print);
+		Init::SetValues(sim.param.radiusCheck, values[0][3], -1.0, "Check Radius", 0, sim.print);
 		Init::SetValues(sim.param.secondary, values[0][4], 0, "Secondary Solidfication", 0, sim.print);
 	}
 	

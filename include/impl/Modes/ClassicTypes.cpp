@@ -819,8 +819,7 @@ namespace Thesis::impl{
 					if (T_cur[p] >= sim.material.T_liq)
 					{
 						// Add to surface liquid points to being checking
-						th_liq_pts.push_back(p);
-						
+						th_liq_pts.push_back(p);	
 					}
 					// If the previously molten surface point has solidified, then every point below it must have as well
 					else 

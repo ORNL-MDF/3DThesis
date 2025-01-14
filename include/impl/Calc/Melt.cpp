@@ -125,8 +125,18 @@ namespace Thesis::impl{
 				int y_grid_num = static_cast<int>(std::floor((path[seg].sy - sim.domain.ymin) / sim.domain.yres));
 				const int z_grid_num = sim.domain.znum-1;
 
-				// If out of bounds, will be covered by perimeter tracker
-				if (x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum-1){ continue;}
+				// Default to classic behavior if "CheckRadius" is not set
+				if (sim.param.radiusCheck < 0){
+					// If out of bounds, snap to nearest point
+					if (x_grid_num < 0){x_grid_num = -1;}
+					if (x_grid_num > sim.domain.xnum - 1){x_grid_num = sim.domain.xnum - 1;}
+					if (y_grid_num < 0){y_grid_num = -1;}
+					if (y_grid_num > sim.domain.ynum - 1){y_grid_num = sim.domain.ynum - 1;}
+				}
+				else{
+					// If out of bounds, will be covered by perimeter tracker
+					if (x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum-1){ continue;}
+				}
 				
 				// Vector of test points
 				for (int dx=0;dx<=1;dx++){
@@ -156,8 +166,18 @@ namespace Thesis::impl{
 				int y_grid_num = static_cast<int>(std::floor((current_beam.yb - sim.domain.ymin) / sim.domain.yres));
 				const int z_grid_num = sim.domain.znum-1;
 
-				// If out of bounds, will be covered by perimeter tracker
-				if (x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum-1){ continue;}
+				// Default to classic behavior if "CheckRadius" is not set
+				if (sim.param.radiusCheck < 0){
+					// If out of bounds, snap to nearest point
+					if (x_grid_num < 0){x_grid_num = -1;}
+					if (x_grid_num > sim.domain.xnum - 1){x_grid_num = sim.domain.xnum - 1;}
+					if (y_grid_num < 0){y_grid_num = -1;}
+					if (y_grid_num > sim.domain.ynum - 1){y_grid_num = sim.domain.ynum - 1;}
+				}
+				else{
+					// If out of bounds, will be covered by perimeter tracker
+					if (x_grid_num<0 || x_grid_num>sim.domain.xnum-1 || y_grid_num<0 || y_grid_num>sim.domain.ynum-1){ continue;}
+				}
 
 				// Vector of test points
 				for (int dx=0;dx<=1;dx++){
