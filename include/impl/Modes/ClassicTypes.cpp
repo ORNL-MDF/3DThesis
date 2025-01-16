@@ -149,7 +149,7 @@ namespace Thesis::impl{
 
 			// Trace path from now until start of scan to seed initial points
 			vector<int> bm_tr_pts;
-			if (itert) { Melt::beam_trace(bm_tr_pts, grid, sim, 0, t); }
+			Melt::beam_trace(bm_tr_pts, grid, sim, 0, t);
 			
 			// Calculate temperature of seed points and see what is liquid
 			vector<int> test_pts = liq_pts;
