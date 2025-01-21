@@ -38,6 +38,12 @@ target_link_libraries(Thesis
     Kokkos::kokkos
 )
 
+# Link OpenMP
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(Thesis PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 # Conditionally link MPI
 if(THESIS_ENABLE_MPI)
   target_link_libraries(Thesis PUBLIC MPI::MPI_CXX)
