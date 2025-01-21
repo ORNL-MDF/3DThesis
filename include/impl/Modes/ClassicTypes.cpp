@@ -9,6 +9,9 @@
  * SPDX-License-Identifier: BSD-3-Clause                                    *
  ****************************************************************************/
 
+// TODO::DEBUG
+#include <chrono>
+
 #include "impl/Modes/ClassicTypes.hpp"
 
 #include "impl/Structs/DataStructs.hpp"
@@ -761,6 +764,9 @@ namespace Thesis::impl{
 		int itert = 0;
 		double t = 0.0;
 
+		// TODO::DEBUG
+		double NodeTime = 0.0;
+
 		while (true) {
 			
 			Out::Progress(print_prog_last, sim, itert);
@@ -779,12 +785,24 @@ namespace Thesis::impl{
 			std::fill(isLiq.begin(),isLiq.end(),static_cast<uint8_t>(0));
 			c_relevant.clear();
 
+			// TODO::DEBUG
+			bool openmp_active = false; // Flag to track if OpenMP is active
 			//Set T_calc_flag at all points to indicate that they have not yet been calculated
 			#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
 			for (int r = 0; r < reset_pts.size(); r++) {
 				const int p = reset_pts[r];
 				grid.set_T_last(p);
 				grid.set_T_calc_flag(0, p);
+
+				// TODO::DEBUG
+				// Get thread ID and number of threads
+				int thread_id = omp_get_thread_num();
+				int num_threads = omp_get_num_threads();
+				// Print diagnostic information (only once per thread)
+				if (thread_id == 0 && !openmp_active) {
+					std::cout << "OpenMP is active with " << num_threads << " threads." << std::endl;
+					openmp_active = true;
+				}
 			}
 			reset_pts.clear();
 
@@ -793,7 +811,12 @@ namespace Thesis::impl{
 			liq_pts.clear();
 
 			// Calculate Integration information
+			// TODO::DEBUG
+			auto start_node = std::chrono::high_resolution_clock::now();
 			Calc::Integrate_Parallel(nodes, parNodes, start_seg, sim, t, false);
+            auto stop_node = std::chrono::high_resolution_clock::now();
+            const double thisNodeTime = (std::chrono::duration<double, std::milli>(stop_node - start_node).count()) / 1000.0;
+            NodeTime += thisNodeTime;
 
 			// Check liquid points on surface to see if they have solidified
 			#pragma omp parallel num_threads(sim.settings.thnum)
@@ -1081,6 +1104,9 @@ namespace Thesis::impl{
 			nodes_last = nodes;
 			Util::ClearNodes(nodes);
 		}
+
+		// TODO::DEBUG
+		std::cout << "\nNodeTime(s): " << NodeTime << std::endl;
 
 		return;
 	}
