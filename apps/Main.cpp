@@ -15,7 +15,15 @@
 int main(int argc, char * argv[]) {	
 	// Initialize MPI
     MPI_Init(&argc, &argv);
-	Thesis::Run::Classic(argc, argv);
+	{
+	// Initialize Kokkos
+    Kokkos::initialize(argc, argv);
+	{   
+		Thesis::Run::Classic(argc, argv);
+	}
+	// Finalize Kokkos
+    Kokkos::finalize();
+    }
 	// Finalize MPI
     MPI_Finalize();
 
