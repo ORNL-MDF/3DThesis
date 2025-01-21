@@ -106,7 +106,6 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Snapshots_Volume(Grid& grid, const Simdat& sim) {
-		omp_set_nested(1);
 
 		//Sets locks so only 1 thread can access a master point at the same time
 		vector<omp_lock_t> lock(sim.domain.pnum);
@@ -178,7 +177,6 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Snapshots_GeometryBounds(Grid& grid, const Simdat& sim) {
-		omp_set_nested(1);
 
 		const vector<string> col_names = {
 			"Length Raw (m)",
@@ -462,7 +460,6 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Solidify_Volume(Grid& grid, const Simdat& sim) {
-		omp_set_nested(1);
 
 		// Print Stuff
 		int print_prog_last = 0;
@@ -573,8 +570,6 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Solidify_Surface(Grid& grid, const Simdat& sim) {
-		
-		omp_set_nested(1);
 
 		// Print Stuff
 		int print_prog_last = 0;
@@ -716,8 +711,6 @@ namespace Thesis::impl{
 	}
 
 	void Modes::Stork(Grid& grid, const Simdat& sim) {
-		
-		omp_set_nested(1);
 
 		// Print Stuff
 		int print_prog_last = 0;
