@@ -18,7 +18,7 @@ using std::string;
 
 namespace Thesis::impl {
 	namespace Calc{
-			// Get quadrature nodes and points for several subsequent timesteps in parallel
+		// Get quadrature nodes and points for several subsequent timesteps in parallel
 		void Integrate_Parallel(Nodes&, vector<Nodes>&, vector<int>&, const Simdat&, const double, const bool);
 		// Get quadrature nodes and points for one time
 		void Integrate_Serial(Nodes&, vector<int>&, const Simdat&, const double, const bool);

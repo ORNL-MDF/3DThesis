@@ -8,6 +8,8 @@
  *                                                                          *
  * SPDX-License-Identifier: BSD-3-Clause                                    *
  ****************************************************************************/
+// TODO::DEBUG
+#include <chrono>
 
 #include <cmath>
 #include <cfloat>
@@ -18,6 +20,25 @@
 #include "impl/Structs/DataStructs.hpp"
 #include "impl/Calc/Calc.hpp"
 #include "impl/Calc/Util.hpp"
+
+#ifdef __GNUC__ // GCC or Clang
+#include <cstdint>
+inline int my_bit_width(uint64_t x) {
+    if (x == 0) return 0;
+    return 64 - __builtin_clzll(x); // Count leading zeros
+}
+#elif defined(_MSC_VER) // Microsoft Visual C++
+#include <intrin.h>
+#include <cstdint>
+inline int my_bit_width(uint64_t x) {
+    if (x == 0) return 0;
+    unsigned long index;
+    _BitScanReverse64(&index, x); // Find index of most significant set bit
+    return index + 1;
+}
+#else
+#error "Compiler not supported. Please implement my_bit_width for your compiler."
+#endif
 
 namespace Thesis::impl
 {
@@ -78,10 +99,52 @@ namespace Thesis::impl
 		return;
 	}
 
+	// Add these helper functions in Util namespace
+	namespace impl {
+
+		// Fast log2 floor using bit scanning
+		inline int log2_floor(double x) {
+			return my_bit_width(static_cast<int>(x)) - 1;
+		}
+
+		// Fast log2 ceil using bit scanning
+		inline int log2_ceil(double x) {
+			return my_bit_width(static_cast<int>(x) - 1);
+		}
+
+		// Analytic determination for spot mode steps
+		inline int spot_steps(double s_start, double s_end) {
+			const int delta = static_cast<int>(std::ceil(s_end - s_start));
+			const int prevPow = log2_floor(s_start+1.0);
+			const int prevMinusOne = (1 << prevPow) - 1;
+			return (log2_floor(prevMinusOne + delta)-prevPow) + 1;
+		}
+
+		// Upper bound for line mode steps
+		inline int line_steps(double s_start, double s_end, double V) {
+			//constexpr double lineConst_z = 12.0 * std::sqrt(std::log(std::sqrt(2)));
+			constexpr double lineConst_z = 7.064460135092848;
+			const double A = lineConst_z / V;
+			const double z_start = 12.0 * s_start;
+			const double z_end = 12.0 * s_end;
+
+			const double t0 = std::sqrt(z_start + 1.0);
+			const double T = std::sqrt(z_end + 1.0);
+			const double denominator = std::sqrt(t0 * t0 + A * t0) - t0;
+			
+			return static_cast<int>(std::ceil((T - t0) / denominator));
+		}
+	}
+
 	void Calc::GaussIntegrate(Nodes& nodes, vector<int>& start_seg, const Simdat& sim, const double t, const bool isSol) {
+				
+		static constexpr double lineConst_s = 0.5887050112577373;
+		static constexpr double piConst = 0.933162059717596;
+		static constexpr int ORDER_OFFSETS[4] = {0, 2, 6, 14};
+		static constexpr int ORDER_COUNTS[4] = {2, 4, 8, 16};
 
 		// Quadrature node locations for order 2, 4, 8, and 16
-		static const double locs[30] = {
+		static constexpr double locs[30] = {
 			-0.57735027,  0.57735027,
 			-0.86113631, -0.33998104,  0.33998104,  0.86113631,
 			-0.96028986, -0.79666648, -0.52553241, -0.18343464,  0.18343464,  0.52553241, 0.79666648,  0.96028986,
@@ -89,137 +152,214 @@ namespace Thesis::impl
 		};
 
 		// Quadrature weights for order 2, 4, 8, and 16
-		static const double weights[30] = {
+		static constexpr double weights[30] = {
 			1.0, 1.0,
 			0.34785485, 0.65214515, 0.65214515, 0.34785485,
 			0.10122854, 0.22238103, 0.31370665, 0.36268378, 0.36268378, 0.31370665, 0.22238103, 0.10122854,
 			0.02715246, 0.06225352, 0.09515851, 0.12462897, 0.14959599, 0.16915652,0.18260342, 0.18945061, 0.18945061, 0.18260342, 0.16915652, 0.14959599,0.12462897, 0.09515851, 0.06225352, 0.02715246
 		};
 
-		// For each beam and path
 		for (int i = 0; i < sim.paths.size(); i++) {
-
-			// Set beam, path, and seg_temp
 			const Beam& beam = sim.beams[i];
 			const vector<path_seg>& path = sim.paths[i];
 			int seg_temp = start_seg[i];
 
-			// Get beta for beam
-			const double beta = pow(3.0 / PI, 1.5) * beam.q / (sim.material.rho * sim.material.cps);
+			// Set material constant
+			const double beta = piConst * beam.q / (sim.material.rho * sim.material.cps);
 
-			// Keep incrementing up if t is greater than the end of the path segment but also below the end time of the scan
-			while ((t > path[seg_temp].seg_time) && (seg_temp + 1 < path.size())) { seg_temp++; }
-			// Keep incrementing down if t is less than end of previous path segment
-			while ((t < path[seg_temp - 1].seg_time) && (seg_temp - 1 > 0)) { seg_temp--; }
+			while ((t > path[seg_temp].seg_time) && (seg_temp + 1 < path.size())) {seg_temp++;}
+			while ((t < path[seg_temp - 1].seg_time) && (seg_temp - 1 > 0)) {seg_temp--;}
 			
-			// If not solidifying and the first thread, then make this the start next time the function is run
-			if (!isSol && (omp_get_thread_num()==0)) {start_seg[i] = seg_temp;}
+			if (!isSol && (omp_get_thread_num() == 0)){start_seg[i] = seg_temp;}
 
-			// Get minimim time to integrate to
-			const double t0 = Util::t0calc(t, beam, sim.material, sim.settings);
-			
-			// Set maximum starting step size to nonDimensional diffusion time
-			double curStep_max_start = beam.nond_dt;
-			
-			// If solidifying, refine integration time
-			if (isSol) { curStep_max_start *= beam.az; }
+			// Reserve size for nodes
+			nodes.xb.reserve(1000);
+			nodes.yb.reserve(1000);
+			nodes.zb.reserve(1000);
+			nodes.phix.reserve(1000);
+			nodes.phiy.reserve(1000);
+			nodes.phiz.reserve(1000);
+			nodes.dtau.reserve(1000);
+			nodes.expmod.reserve(1000);
 
-			// Set max step size to starting step size
-			double curStep_max = curStep_max_start;
-
-			// Set step size to max step
-			double curStep_use = curStep_max;
-			
-			// Start quadrature order at 16
-			int curOrder = 16;
-
-			// Make 1st segment at the exact time
-			// Used for instantaneous heat source additon to laplacian
-			int_seg current_beam = Util::GetBeamLoc(t, seg_temp, path, sim); 
-			current_beam.phix = (beam.ax * beam.ax + 0.0);
-			current_beam.phiy = (beam.ay * beam.ay + 0.0);
-			current_beam.phiz = (beam.az * beam.az + 0.0);
-			current_beam.qmod *= beta;
-			current_beam.dtau = 0.0;
-			if (t <= path.back().seg_time && current_beam.qmod > 0.0) { Util::AddToNodes(nodes, current_beam); }
-
-			bool tflag = true;
-			double t2 = t;
-			double t1 = t;
-			double tpp = 0.0;
-
-			if (t > path.back().seg_time) {
-				tpp += t - path.back().seg_time;
-				t2 = path.back().seg_time;
+			// Add current beam only if solidifying 
+			if (isSol){
+				int_seg current_beam = Util::GetBeamLoc(t, seg_temp, path, sim);
+				current_beam.phix = beam.ax * beam.ax;
+				current_beam.phiy = beam.ay * beam.ay;
+				current_beam.phiz = beam.az * beam.az;
+				current_beam.qmod *= beta;
+				current_beam.dtau = 0.0;
+				if (t <= path.back().seg_time && current_beam.qmod > 0.0) Util::AddToNodes(nodes, current_beam);
 			}
 
-			while (tpp >= 2 * curStep_max - curStep_max_start) {
-				curStep_max *= 2.0;
-				if (curOrder != 2) {
-					curOrder = (curOrder / 2);
-				}
+			// Make vectors of points and lines
+			const int seg_max = seg_temp;
+			vector<int> spot_segs; spot_segs.reserve(seg_max);
+			vector<int> line_segs; line_segs.reserve(seg_max);
+			for (int seg = 1; seg <= seg_max; seg++) {
+				if (path[seg].sqmod == 0.0){continue;}
+				if (path[seg].smode == 1){spot_segs.push_back(seg);}
+				else{line_segs.push_back(seg);}
 			}
 
-			while (tflag) {
-				bool switchSeg = false;
+			// Set consts and reserve sizes
+			const size_t spot_num = spot_segs.size();
+			const size_t line_num = line_segs.size();
 
-				// Get maximum integration step for the segment
-				const double ref_time = Util::GetRefTime(tpp, seg_temp, path, beam);
-
-				// Sets step to the minimum of the ref time and max allowable time
-				curStep_use = (ref_time < curStep_max) ? ref_time : curStep_max;
-
-				// Set ending quadradure time based on step used
-				t1 = t2 - curStep_use;
-
-				// Time the next segment ends
-				const double next_time = path[seg_temp - 1].seg_time;
-
-				//If we are at the end of a segment, hit the end of it and set the program to jump to the next segment next time
-				if (t1 <= next_time) {
-					t1 = next_time;
-					// If next time is greater than t0, switch segments and keep going
-					if (next_time > t0) { switchSeg = true; }
-					// Otherwise, it should end
-					else { tflag = false; }
-				}
-
-				//Add Quadrature Points
-				double tau, ct;
-				for (int a = (2 * curOrder - 3); a > (curOrder - 3); a--) {
-					double tp = 0.5 * ((t2 - t1) * locs[a] + (t2 + t1));
-					tau = t - tp;
-					ct = 12.0 * sim.material.a * tau;
-
-					current_beam = Util::GetBeamLoc(tp, seg_temp, path, sim);
-					current_beam.phix = (beam.ax * beam.ax + ct);
-					current_beam.phiy = (beam.ay * beam.ay + ct);
-					current_beam.phiz = (beam.az * beam.az + ct);
-					current_beam.qmod *= beta;
-					current_beam.dtau = 0.5 * (t2 - t1) * weights[a];
-
-					if (current_beam.qmod > 0.0 && current_beam.dtau > 0.0) { Util::AddToNodes(nodes, current_beam); }
-				}
-
-				//If we are switching segments, increment the start segment down
-				if (switchSeg) {seg_temp--;}
+			// Do just the spots
+			for (size_t spot_seg=0; spot_seg<spot_num; spot_seg++){
 				
-				// Increment the total time passed
-				tpp += (t2 - t1);
+				// Get actual seg
+				const int& seg = spot_segs[spot_seg];
+				
+				// Get position information
+				const double& xb = path[seg].sx;
+				const double& yb = path[seg].sy;
+				const double& zb = path[seg].sz;
+				const double qmod = path[seg].sqmod*beta;
+				if (!Util::InRMax(xb,yb,sim.domain,sim.settings)){continue;}
 
-				// Set start quadruatre time to current end quadrature time
-				t2 = t1;
+				// Set path information
+				const double nond_dt = beam.nond_dt;
+				double tp_start = max(t - path[seg].seg_time, 0.0);
+				double tp_end = t - path[seg - 1].seg_time;
+				double sp_start = tp_start / nond_dt;
+				double sp_end = tp_end / nond_dt;
 
-				//Increase Maximum Step and Decrease Gauss order if it is okay to do so
-				if (tpp >= 2 * curStep_max - curStep_max_start) {
-					curStep_max *= 2.0;
-					if (curOrder != 2) {
-						curOrder = (curOrder / 2);
+				// Calculate maximum number of steps
+				const int steps = impl::spot_steps(sp_start, sp_end);
+				// const int steps = (sp_start-sp_end < sp_start) ? 1 : impl::spot_steps(sp_start, sp_end);
+
+				// Start stepping
+				double s_current = sp_start;
+				for (int step = 0; step < steps; ++step) {
+					
+					// Order and step calculation
+					const int flat = impl::log2_floor(s_current + 1.0);
+					const int k = std::max(3-flat,0);
+					const int step_size = (1 << flat);
+					const int order = ORDER_COUNTS[k];
+					const int offset = ORDER_OFFSETS[k];
+					const double s_next = std::min(s_current + step_size, sp_end);
+
+					// Precalculate quadrature stuff
+					const double s_diff = s_next - s_current;
+					const double s_sum = s_next + s_current;
+					
+					// Quadrature
+					for (int q = 0; q < order; ++q) {
+
+						// Quadrature
+						const double loc = locs[offset + q];
+						const double weight = weights[offset + q];
+						const double ct = 6.0 * (s_diff * loc + s_sum) * sim.material.a * nond_dt;
+						const double phix = 1.0/(beam.ax * beam.ax + ct);	// Precompute division
+						const double phiy = 1.0/(beam.ay * beam.ay + ct);	// Precompute division
+						const double phiz = 1.0/(beam.az * beam.az + ct);	// Precompute division
+						const double dtau = 0.5 * s_diff * nond_dt * weight;
+
+						if (dtau > 0.0) {
+							// Add information to nodes
+							nodes.size++;
+							nodes.xb.push_back(xb);
+							nodes.yb.push_back(yb);
+							nodes.zb.push_back(zb);
+							nodes.phix.push_back(phix);	
+							nodes.phiy.push_back(phiy);	
+							nodes.phiz.push_back(phiz);	
+							nodes.dtau.push_back(dtau);
+							nodes.expmod.push_back(0.5*log(qmod*qmod*phix*phiy*phiz));
+						}
 					}
+
+					// Set s for next loop
+					s_current = s_next;
+				}
+			}
+
+			// Do just the lines
+			for (size_t line_seg=0; line_seg<line_num; line_seg++){
+				const int& seg = line_segs[line_seg];
+
+				// Set object and variables which don't change based on node				
+				const double px =  path[seg - 1].sx;
+				const double py =  path[seg - 1].sy;
+				const double pz =  path[seg - 1].sz;
+				const double pt =  path[seg - 1].seg_time;
+				const double dx = path[seg].sx - path[seg - 1].sx;
+				const double dy = path[seg].sy - path[seg - 1].sy;
+				const double dz = path[seg].sz - path[seg - 1].sz;
+				const double dt_cur = path[seg].seg_time - path[seg - 1].seg_time;
+				const double qmod = path[seg].sqmod*beta;
+
+				// Set path information
+				const double nond_dt = beam.nond_dt;
+				double tp_start = max(t - path[seg].seg_time, 0.0);
+				double tp_end = t - path[seg - 1].seg_time;
+				double sp_start = tp_start / nond_dt;
+				double sp_end = tp_end / nond_dt;
+				const double V = path[seg].sparam * (beam.ax / sim.material.a);
+
+				// Calculate maximum number of steps
+				const int steps = impl::line_steps(sp_start, sp_end, V);
+
+				// Start stepping
+				double s_current = sp_start;
+				for (int step = 0; step < steps; ++step) {
+					if (s_current == sp_end) {continue;}
+
+					// Order and step calculation
+					const int flat = impl::log2_floor(s_current + 1.0);
+					const int k = std::max(3-flat,0);
+					const double step_size = lineConst_s / V * sqrt(12.0 * s_current + 1.0);
+					const int order = ORDER_COUNTS[k];
+					const int offset = ORDER_OFFSETS[k];
+					const double s_next = std::min(s_current + step_size, sp_end);
+
+					// Precalculate quadrature stuff
+					const double s_diff = s_next - s_current;
+					const double s_sum = s_next + s_current;
+
+					// Quadrature
+					for (int q = 0; q < order; ++q) {					
+
+						// Quadrature
+						const double loc = locs[offset + q];
+						const double weight = weights[offset + q];
+						const double tau = 0.5 * (s_diff * loc + s_sum) * nond_dt;
+						const double ct = 12.0 * sim.material.a * tau;
+						const double phix = 1.0/(beam.ax * beam.ax + ct);	// Precompute division
+						const double phiy = 1.0/(beam.ay * beam.ay + ct);	// Precompute division
+						const double phiz = 1.0/(beam.az * beam.az + ct);	// Precompute division
+						const double dtau = 0.5 * s_diff * nond_dt * weight;
+
+						// Location
+						const double tcur = (t - tau) - path[seg - 1].seg_time;
+						const double xb = path[seg - 1].sx + (tcur / dt_cur)*dx;
+						const double yb = path[seg - 1].sy + (tcur / dt_cur)*dy;
+						const double zb = path[seg - 1].sz + (tcur / dt_cur)*dz;
+
+						if (Util::InRMax(xb,yb,sim.domain,sim.settings) && dtau > 0.0) {
+							
+							// Add information to nodes
+							nodes.size++;
+							nodes.xb.push_back(xb);
+							nodes.yb.push_back(yb);
+							nodes.zb.push_back(zb);
+							nodes.phix.push_back(phix);	
+							nodes.phiy.push_back(phiy);	
+							nodes.phiz.push_back(phiz);	
+							nodes.dtau.push_back(dtau);
+							nodes.expmod.push_back(0.5*log(qmod*qmod*phix*phiy*phiz));
+						}
+					}
+
+					// Set s for next loop
+					s_current = s_next;
 				}
 			}
 		}
-		return;
 	}
 
 	void Calc::GaussCompressIntegrate(Nodes& nodes, vector<int>& start_seg, const Simdat& sim, const double t, const bool isSol) {

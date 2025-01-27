@@ -1,4 +1,4 @@
 Compute
 {
-	MaxThreads	8
+	MaxThreads	1
 }

@@ -785,24 +785,12 @@ namespace Thesis::impl{
 			std::fill(isLiq.begin(),isLiq.end(),static_cast<uint8_t>(0));
 			c_relevant.clear();
 
-			// TODO::DEBUG
-			bool openmp_active = false; // Flag to track if OpenMP is active
 			//Set T_calc_flag at all points to indicate that they have not yet been calculated
 			#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
 			for (int r = 0; r < reset_pts.size(); r++) {
 				const int p = reset_pts[r];
 				grid.set_T_last(p);
 				grid.set_T_calc_flag(0, p);
-
-				// TODO::DEBUG
-				// Get thread ID and number of threads
-				int thread_id = omp_get_thread_num();
-				int num_threads = omp_get_num_threads();
-				// Print diagnostic information (only once per thread)
-				if (thread_id == 0 && !openmp_active) {
-					std::cout << "OpenMP is active with " << num_threads << " threads." << std::endl;
-					openmp_active = true;
-				}
 			}
 			reset_pts.clear();
 
