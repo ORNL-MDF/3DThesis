@@ -8,9 +8,6 @@
  *                                                                          *
  * SPDX-License-Identifier: BSD-3-Clause                                    *
  ****************************************************************************/
-// TODO::DEBUG
-#include <chrono>
-
 #include <cmath>
 #include <cfloat>
 #include <algorithm>
@@ -133,6 +130,260 @@ namespace Thesis::impl
 			const double denominator = std::sqrt(t0 * t0 + A * t0) - t0;
 			
 			return static_cast<int>(std::ceil((T - t0) / denominator));
+		}
+	}
+
+	void Calc::GaussIntegrate_Parallel(Nodes& nodes, vector<int>& start_seg, const Simdat& sim, const double t, const bool isSol) {
+				
+		static constexpr double lineConst_s = 0.5887050112577373;
+		static constexpr double piConst = 0.933162059717596;
+		static constexpr int ORDER_OFFSETS[4] = {0, 2, 6, 14};
+		static constexpr int ORDER_COUNTS[4] = {2, 4, 8, 16};
+
+		// Quadrature node locations for order 2, 4, 8, and 16
+		static constexpr double locs[30] = {
+			-0.57735027,  0.57735027,
+			-0.86113631, -0.33998104,  0.33998104,  0.86113631,
+			-0.96028986, -0.79666648, -0.52553241, -0.18343464,  0.18343464,  0.52553241, 0.79666648,  0.96028986,
+			-0.98940093, -0.94457502, -0.8656312, -0.75540441, -0.61787624, -0.45801678, -0.28160355, -0.09501251, 0.09501251, 0.28160355, 0.45801678, 0.61787624, 0.75540441, 0.8656312, 0.94457502, 0.98940093
+		};
+
+		// Quadrature weights for order 2, 4, 8, and 16
+		static constexpr double weights[30] = {
+			1.0, 1.0,
+			0.34785485, 0.65214515, 0.65214515, 0.34785485,
+			0.10122854, 0.22238103, 0.31370665, 0.36268378, 0.36268378, 0.31370665, 0.22238103, 0.10122854,
+			0.02715246, 0.06225352, 0.09515851, 0.12462897, 0.14959599, 0.16915652,0.18260342, 0.18945061, 0.18945061, 0.18260342, 0.16915652, 0.14959599,0.12462897, 0.09515851, 0.06225352, 0.02715246
+		};
+
+		for (int i = 0; i < sim.paths.size(); i++) {
+			const Beam& beam = sim.beams[i];
+			const vector<path_seg>& path = sim.paths[i];
+			int seg_temp = start_seg[i];
+
+			// Set material constant
+			const double beta = piConst * beam.q / (sim.material.rho * sim.material.cps);
+
+			while ((t > path[seg_temp].seg_time) && (seg_temp + 1 < path.size())) {seg_temp++;}
+			while ((t < path[seg_temp - 1].seg_time) && (seg_temp - 1 > 0)) {seg_temp--;}
+			
+			if (!isSol && (omp_get_thread_num() == 0)){start_seg[i] = seg_temp;}
+
+			// Reserve size for nodes
+			nodes.xb.reserve(1000);
+			nodes.yb.reserve(1000);
+			nodes.zb.reserve(1000);
+			nodes.phix.reserve(1000);
+			nodes.phiy.reserve(1000);
+			nodes.phiz.reserve(1000);
+			nodes.dtau.reserve(1000);
+			nodes.expmod.reserve(1000);
+
+			// Add current beam only if solidifying 
+			if (isSol){
+				int_seg current_beam = Util::GetBeamLoc(t, seg_temp, path, sim);
+				current_beam.phix = beam.ax * beam.ax;
+				current_beam.phiy = beam.ay * beam.ay;
+				current_beam.phiz = beam.az * beam.az;
+				current_beam.qmod *= beta;
+				current_beam.dtau = 0.0;
+				if (t <= path.back().seg_time && current_beam.qmod > 0.0) Util::AddToNodes(nodes, current_beam);
+			}
+
+			// Make vectors of points and lines
+			const int seg_max = seg_temp;
+			vector<int> spot_segs; spot_segs.reserve(seg_max);
+			vector<int> line_segs; line_segs.reserve(seg_max);
+			for (int seg = 1; seg <= seg_max; seg++) {
+				if (path[seg].sqmod == 0.0){continue;}
+				if (path[seg].smode == 1){spot_segs.push_back(seg);}
+				else{line_segs.push_back(seg);}
+			}
+
+			// Set consts and reserve sizes
+			const size_t spot_num = spot_segs.size();
+			const size_t line_num = line_segs.size();
+
+			// Do just the spots
+			#pragma omp parallel num_threads(sim.settings.thnum)
+			{
+				// Thread local variables
+				int th_size = 0;
+				vector<double> th_xb; th_xb.reserve(128);
+				vector<double> th_yb; th_yb.reserve(128);
+				vector<double> th_zb; th_zb.reserve(128);
+				vector<double> th_phix; th_phix.reserve(128);
+				vector<double> th_phiy; th_phiy.reserve(128);
+				vector<double> th_phiz; th_phiz.reserve(128);
+				vector<double> th_dtau; th_dtau.reserve(128);
+				vector<double> th_expmod; th_expmod.reserve(128);
+
+				#pragma omp for schedule(static)
+				for (size_t spot_seg=0; spot_seg<spot_num; spot_seg++){
+					// Get actual seg
+					const int& seg = spot_segs[spot_seg];
+					
+					// Get position information
+					const double& xb = path[seg].sx;
+					const double& yb = path[seg].sy;
+					const double& zb = path[seg].sz;
+					const double qmod = path[seg].sqmod*beta;
+					if (!Util::InRMax(xb,yb,sim.domain,sim.settings)){continue;}
+
+					// Set path information
+					const double nond_dt = beam.nond_dt;
+					double tp_start = max(t - path[seg].seg_time, 0.0);
+					double tp_end = t - path[seg - 1].seg_time;
+					double sp_start = tp_start / nond_dt;
+					double sp_end = tp_end / nond_dt;
+
+					// Calculate maximum number of steps
+					const int steps = impl::spot_steps(sp_start, sp_end);
+					// const int steps = (sp_start-sp_end < sp_start) ? 1 : impl::spot_steps(sp_start, sp_end);
+
+					// Start stepping
+					double s_current = sp_start;
+					for (int step = 0; step < steps; ++step) {
+						
+						// Order and step calculation
+						const int flat = impl::log2_floor(s_current + 1.0);
+						const int k = std::max(3-flat,0);
+						const int step_size = (1 << flat);
+						const int order = ORDER_COUNTS[k];
+						const int offset = ORDER_OFFSETS[k];
+						const double s_next = std::min(s_current + step_size, sp_end);
+
+						// Precalculate quadrature stuff
+						const double s_diff = s_next - s_current;
+						const double s_sum = s_next + s_current;
+						
+						// Quadrature
+						for (int q = 0; q < order; ++q) {
+
+							// Quadrature
+							const double loc = locs[offset + q];
+							const double weight = weights[offset + q];
+							const double ct = 6.0 * (s_diff * loc + s_sum) * sim.material.a * nond_dt;
+							const double phix = 1.0/(beam.ax * beam.ax + ct);	// Precompute division
+							const double phiy = 1.0/(beam.ay * beam.ay + ct);	// Precompute division
+							const double phiz = 1.0/(beam.az * beam.az + ct);	// Precompute division
+							const double dtau = 0.5 * s_diff * nond_dt * weight;
+
+							if (dtau > 0.0) {
+								// Add information to nodes
+								th_size++;
+								th_xb.push_back(xb);
+								th_yb.push_back(yb);
+								th_zb.push_back(zb);
+								th_phix.push_back(phix);	
+								th_phiy.push_back(phiy);	
+								th_phiz.push_back(phiz);	
+								th_dtau.push_back(dtau);
+								th_expmod.push_back(0.5*log(qmod*qmod*phix*phiy*phiz));
+							}
+						}
+
+						// Set s for next loop
+						s_current = s_next;
+					}
+				}
+
+				#pragma omp for schedule(static)
+				// Do just the lines
+				for (size_t line_seg=0; line_seg<line_num; line_seg++){
+					const int& seg = line_segs[line_seg];
+
+					// Set object and variables which don't change based on node				
+					const double px =  path[seg - 1].sx;
+					const double py =  path[seg - 1].sy;
+					const double pz =  path[seg - 1].sz;
+					const double pt =  path[seg - 1].seg_time;
+					const double dx = path[seg].sx - path[seg - 1].sx;
+					const double dy = path[seg].sy - path[seg - 1].sy;
+					const double dz = path[seg].sz - path[seg - 1].sz;
+					const double dt_cur = path[seg].seg_time - path[seg - 1].seg_time;
+					const double qmod = path[seg].sqmod*beta;
+
+					// Set path information
+					const double nond_dt = beam.nond_dt;
+					double tp_start = max(t - path[seg].seg_time, 0.0);
+					double tp_end = t - path[seg - 1].seg_time;
+					double sp_start = tp_start / nond_dt;
+					double sp_end = tp_end / nond_dt;
+					const double V = path[seg].sparam * (beam.ax / sim.material.a);
+
+					// Calculate maximum number of steps
+					const int steps = impl::line_steps(sp_start, sp_end, V);
+
+					// Start stepping
+					double s_current = sp_start;
+					for (int step = 0; step < steps; ++step) {
+						if (s_current == sp_end) {continue;}
+
+						// Order and step calculation
+						const int flat = impl::log2_floor(s_current + 1.0);
+						const int k = std::max(3-flat,0);
+						const double step_size = lineConst_s / V * sqrt(12.0 * s_current + 1.0);
+						const int order = ORDER_COUNTS[k];
+						const int offset = ORDER_OFFSETS[k];
+						const double s_next = std::min(s_current + step_size, sp_end);
+
+						// Precalculate quadrature stuff
+						const double s_diff = s_next - s_current;
+						const double s_sum = s_next + s_current;
+
+						// Quadrature
+						for (int q = 0; q < order; ++q) {					
+
+							// Quadrature
+							const double loc = locs[offset + q];
+							const double weight = weights[offset + q];
+							const double tau = 0.5 * (s_diff * loc + s_sum) * nond_dt;
+							const double ct = 12.0 * sim.material.a * tau;
+							const double phix = 1.0/(beam.ax * beam.ax + ct);	// Precompute division
+							const double phiy = 1.0/(beam.ay * beam.ay + ct);	// Precompute division
+							const double phiz = 1.0/(beam.az * beam.az + ct);	// Precompute division
+							const double dtau = 0.5 * s_diff * nond_dt * weight;
+
+							// Location
+							const double tcur = (t - tau) - path[seg - 1].seg_time;
+							const double xb = path[seg - 1].sx + (tcur / dt_cur)*dx;
+							const double yb = path[seg - 1].sy + (tcur / dt_cur)*dy;
+							const double zb = path[seg - 1].sz + (tcur / dt_cur)*dz;
+
+							if (Util::InRMax(xb,yb,sim.domain,sim.settings) && dtau > 0.0) {	
+								// Add information to nodes
+								th_size++;
+								th_xb.push_back(xb);
+								th_yb.push_back(yb);
+								th_zb.push_back(zb);
+								th_phix.push_back(phix);	
+								th_phiy.push_back(phiy);	
+								th_phiz.push_back(phiz);	
+								th_dtau.push_back(dtau);
+								th_expmod.push_back(0.5*log(qmod*qmod*phix*phiy*phiz));
+							}
+						}
+
+						// Set s for next loop
+						s_current = s_next;
+					}
+				}
+
+				// Now add to nodes
+				#pragma omp critical
+				{
+					nodes.size += th_size;
+					nodes.xb.insert(nodes.xb.end(), th_xb.begin(), th_xb.end());
+					nodes.yb.insert(nodes.yb.end(), th_yb.begin(), th_yb.end());
+					nodes.zb.insert(nodes.zb.end(), th_zb.begin(), th_zb.end());
+					nodes.phix.insert(nodes.phix.end(), th_phix.begin(), th_phix.end());
+					nodes.phiy.insert(nodes.phiy.end(), th_phiy.begin(), th_phiy.end());
+					nodes.phiz.insert(nodes.phiz.end(), th_phiz.begin(), th_phiz.end());
+					nodes.dtau.insert(nodes.dtau.end(), th_dtau.begin(), th_dtau.end());
+					nodes.expmod.insert(nodes.expmod.end(), th_expmod.begin(), th_expmod.end());
+				}
+			}
 		}
 	}
 

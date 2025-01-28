@@ -23,6 +23,8 @@ namespace Thesis::impl {
 		// Get quadrature nodes and points for one time
 		void Integrate_Serial(Nodes&, vector<int>&, const Simdat&, const double, const bool);
 
+		// Adaptive Integration Scheme - Parallelizable
+		void GaussIntegrate_Parallel(Nodes&, vector<int>&, const Simdat&, const double, const bool);
 		// Adaptive Integration Scheme
 		void GaussIntegrate(Nodes&, vector<int>&, const Simdat&, const double, const bool);
 		// Adaptive Integration Scheme with a compression scheme between neighboring path segments. Very usefull for point rasters.

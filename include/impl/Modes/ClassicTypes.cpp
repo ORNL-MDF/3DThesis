@@ -603,7 +603,13 @@ namespace Thesis::impl{
 			Out::Progress(print_prog_last, sim, itert);
 
 			//Calculate Integration information
-			Calc::Integrate_Parallel(nodes, parNodes, start_seg, sim, t, false);
+			//Calc::Integrate_Parallel(nodes, parNodes, start_seg, sim, t, false);
+			// TODO::DEBUG
+			if (!start_seg.size()){
+				// This enables the starting search path segment to be quickly initialized each time. 
+				start_seg = vector<int>(sim.paths.size(), 1);
+			}
+			Calc::GaussIntegrate_Parallel(nodes, start_seg, sim, t, false);
 
 			//Set T_calc_flag at all points to indicate that they have not yet been calculated
 			#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
