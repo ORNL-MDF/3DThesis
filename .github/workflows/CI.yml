@@ -21,7 +21,7 @@ jobs:
         distro: ['ubuntu:latest']
         cxx: ['g++', 'clang++']
         cmake_build_type: ['Debug', 'Release']
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container: ghcr.io/ornl-mdf/ci-containers/ubuntu:latest
     steps:
       - name: Checkout 3DThesis
