@@ -135,7 +135,8 @@ void Melt::beam_trace(vector<int>& test_pts, Grid& grid, const Simdat& sim, cons
 					const bool i_ob = (x_grid<0 || x_grid>sim.domain.xnum-1);
 					const bool j_ob = (y_grid<0 || y_grid>sim.domain.ynum-1);
 					if (i_ob || j_ob) { continue;}
-					const int p = (z_grid_num) + sim.domain.znum * y_grid + sim.domain.znum * sim.domain.ynum * x_grid;
+					const int p = Util::ijk_to_p(x_grid, y_grid, z_grid_num, sim);
+
 					if (!grid.get_T_calc_flag(p))
 					{
 						test_pts.push_back(p);
@@ -166,7 +167,8 @@ void Melt::beam_trace(vector<int>& test_pts, Grid& grid, const Simdat& sim, cons
 					const bool i_ob = (x_grid<0 || x_grid>sim.domain.xnum-1);
 					const bool j_ob = (y_grid<0 || y_grid>sim.domain.ynum-1);
 					if (i_ob || j_ob) { continue;}
-					const int p = (z_grid_num) + sim.domain.znum * y_grid + sim.domain.znum * sim.domain.ynum * x_grid;
+                                        const int p = Util::ijk_to_p(x_grid, y_grid, z_grid_num, sim);
+
 					if (!grid.get_T_calc_flag(p))
 					{
 						test_pts.push_back(p);
