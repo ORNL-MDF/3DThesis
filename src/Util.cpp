@@ -87,16 +87,42 @@ void Util::Calc_ScanBounds(Domain& domain, const vector<vector<path_seg>>& paths
 	double zmin = DBL_MAX;
 	double zmax = -DBL_MAX;
 
+    // Variables to store previous segment values
+    double prev_sx = 0.0, prev_sy = 0.0, prev_sz = 0.0, prev_sqmod = 0.0;
+    bool firstSegment = true;
+
 	for (const vector<path_seg>& path : paths) {
 		for (const path_seg& seg : path) {
-			if (seg.sqmod > 0) {
-				if (seg.sx < xmin) { xmin = seg.sx; }
-				if (seg.sx > xmax) { xmax = seg.sx; }
-				if (seg.sy < ymin) { ymin = seg.sy; }
-				if (seg.sy > ymax) { ymax = seg.sy; }
-				if (seg.sz < zmin) { zmin = seg.sz; }
-				if (seg.sz > zmax) { zmax = seg.sz; }
+			if (seg.sqmod > 0.0) {
+				if (firstSegment) {
+					xmin = xmax = seg.sx;
+					ymin = ymax = seg.sy;
+					zmin = zmax = seg.sz;
+				} else {
+					if (seg.sx < xmin) { xmin = seg.sx; }
+					if (seg.sx > xmax) { xmax = seg.sx; }
+					if (seg.sy < ymin) { ymin = seg.sy; }
+					if (seg.sy > ymax) { ymax = seg.sy; }
+					if (seg.sz < zmin) { zmin = seg.sz; }
+					if (seg.sz > zmax) { zmax = seg.sz; }
+					if ((prev_sqmod == 0.0) && (seg.smode == 0)) {
+						if (prev_sx < xmin) { xmin = prev_sx; }
+						if (prev_sx > xmax) { xmax = prev_sx; }
+						if (prev_sy < ymin) { ymin = prev_sy; }
+						if (prev_sy > ymax) { ymax = prev_sy; }
+						if (prev_sz < zmin) { zmin = prev_sz; }
+						if (prev_sz > zmax) { zmax = prev_sz; }
+					}
+				}
 			}
+
+			// Store the current segments values to check for initial
+			// raster starting point (if Mode 0 and going from no power -> power)
+			firstSegment = false;
+			prev_sx = seg.sx;
+			prev_sy = seg.sy;
+			prev_sz = seg.sz;
+			prev_sqmod = seg.sqmod;
 		}
 	}
 
