@@ -14,5 +14,17 @@ if(Thesis_REQUIRE_MPI)
 endif()
 set(Thesis_ENABLE_MPI ${MPI_FOUND})
 
+find_package(Git)
+if(GIT_FOUND AND IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -n 1
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE Thesis_COMMIT_HASH)
+else()
+  set(Thesis_COMMIT_HASH "Not a git repository")
+endif()
+message(STATUS "Thesis version: ${PROJECT_VERSION}")
+message(STATUS "Thesis commit:  ${Thesis_COMMIT_HASH}")
+
 add_subdirectory(src)
 add_subdirectory(bin)

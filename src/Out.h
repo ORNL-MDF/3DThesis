@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <string>
 
 using std::vector;
 using std::string;
@@ -24,4 +25,8 @@ namespace Out {
 	void Progress(const Simdat&, const int);
 	// Writes the progress of points to the console
 	void Point_Progress(const Simdat&, const int);
+
+  // Functions for printing the version.
+  std::string version();
+  std::string commitHash();
 }

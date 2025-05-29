@@ -1,3 +1,7 @@
 #pragma once
 
+#define Thesis_VERSION "@PROJECT_VERSION@"
+
+#define Thesis_COMMIT_HASH "@Thesis_COMMIT_HASH@"
+
 #cmakedefine Thesis_ENABLE_MPI

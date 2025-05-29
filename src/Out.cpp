@@ -18,6 +18,7 @@
 
 #include "Out.h"
 #include "DataStructs.h"
+#include "ThesisConfig.h"
 
 void Out::Progress(const Simdat& sim, const int itert) {
 	static int prog_print_last = 0;
@@ -45,3 +46,6 @@ void Out::Point_Progress(const Simdat& sim, const int p) {
 	}
 	return;
 }
+
+std::string Out::version() { return Thesis_VERSION; }
+std::string Out::commitHash() { return Thesis_COMMIT_HASH; }
