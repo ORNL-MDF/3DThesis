@@ -89,9 +89,11 @@ inline void run(int argc, char * argv[])
 
 	// Output simulation time
 	auto stop_sim = high_resolution_clock::now();
-	if (sim.print)
-		std::cout << "Execution time (s): " << (duration<double, std::milli>(stop_sim - start_sim).count())/1000.0 << "\n\n";//(stop_sim - start_sim) / double(CLOCKS_PER_SEC) << "\n\n";
-
+	if (sim.print) {
+                std::cout << "Version: " << Out::version() << "\n";
+                std::cout << "Commit hash: " << Out::commitHash() <<	"\n";
+                std::cout << "Execution time (s): " << (duration<double, std::milli>(stop_sim - start_sim).count())/1000.0 << "\n\n";//(stop_sim - start_sim) / double(CLOCKS_PER_SEC) << "\n\n";
+	}
 	// Start output clock
 	auto start_out = high_resolution_clock::now();
 
