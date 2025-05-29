@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   CI:
+    name: Ubuntu
     defaults:
       run:
         shell: bash
@@ -127,3 +128,33 @@ jobs:
           if [ $(expr $file_count) < 1 ]; then
               exit 1
           fi
+
+  Windows:
+    name: Windows
+    defaults:
+      run:
+        shell: bash
+    runs-on: windows-latest
+    steps:
+      - name: Checkout 3DThesis
+        uses: actions/checkout@v4
+      - name: Build
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_INSTALL_PREFIX=3dthesis \
+            -DMPIEXEC_PREFLAGS="--oversubscribe" \
+            -DCMAKE_CXX_FLAGS="-Wall ${cmake_cxx_flags[@]}" \
+            ${cmake_opts[@]}
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Test 3DThesis Snapshots
+        run: |
+          cd $GITHUB_WORKSPACE/examples/snapshot
+          echo Current working directory: $(pwd)
+          $GITHUB_WORKSPACE/3dthesis/bin/3DThesis.exe ./ParamInput.txt
+          file_count="$(find Data -name "snapshot*.csv" -printf "." | wc -m)"
+          if [ $(expr $file_count) < 1 ]; then
+              exit 1
+          fi
+          rm -r Data
