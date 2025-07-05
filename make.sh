@@ -22,7 +22,7 @@ cmake \
   -D CMAKE_BUILD_TYPE="Release" \
   -D CMAKE_INSTALL_PREFIX=install \
   -D CMAKE_CXX_FLAGS="-fopenmp -O3 -ffast-math -march=znver3 -mtune=znver3" \
-  -D CMAKE_PREFIX_PATH="${KOKKOS_INSTALL};${MPI_DIR};${STORK_DIR}" \
+  -D CMAKE_PREFIX_PATH="${KOKKOS_DIR};${MPI_DIR};${STORK_DIR}" \
   -D CMAKE_CUDA_ARCHITECTURES="86" \
   -D THESIS_ENABLE_MPI=ON \
   ..
