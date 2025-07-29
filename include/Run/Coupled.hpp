@@ -23,7 +23,7 @@
 namespace Thesis::Run{
 
     template<typename FloatType>
-    Stork::Structs::RDF_Dual<FloatType> Coupled_RDF(int argc, char * argv[])
+    void Coupled_RDF(int argc, char * argv[], Stork::Structs::RDF_Dual<FloatType>& RDF)
     {
         // Namespace declarations
         using namespace impl;
@@ -60,7 +60,6 @@ namespace Thesis::Run{
         Init::ReadSimParams(sim);
 
         // Make structure with precise size
-        RDF_Dual<FloatType> RDF;
         RegularGrid_Header<FloatType, host_space>& header = RDF.host_header;
 
         // Set origin point before decomposition changes them
@@ -151,13 +150,10 @@ namespace Thesis::Run{
                 }
             }
         }
-
-        // Return Kokkos data
-        return RDF;
     }
 
     template<typename FloatType>
-    Stork::Structs::SRDF_Dual<FloatType>  Coupled_SRDF(int argc, char * argv[])
+    void Coupled_SRDF(int argc, char * argv[], Stork::Structs::SRDF_Dual<FloatType>& SRDF)
     {
         // Namespace declarations
         using namespace impl;
@@ -194,7 +190,6 @@ namespace Thesis::Run{
         Init::ReadSimParams(sim);
 
         // Initialize Kokoks views
-        SRDF_Dual<FloatType> SRDF;
         RegularGrid_Header<FloatType, host_space>& header = SRDF.host_header;
 
         // Set origin point before decomposition changes them
@@ -321,9 +316,5 @@ namespace Thesis::Run{
         // Copy rest to to managed views
         Kokkos::deep_copy(data.times_view, unmanagedView_t);
         Kokkos::deep_copy(data.thermals_view, unmanagedView_T);
-
-        // Return Kokkos data
-        return SRDF;
     }
-
 }
