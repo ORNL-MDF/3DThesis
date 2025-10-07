@@ -131,43 +131,46 @@ jobs:
 
   Windows:
     name: Windows
-    defaults:
-      run:
-        shell: bash
     runs-on: windows-latest
     steps:
       - name: Checkout 3DThesis
         uses: actions/checkout@v4
       - name: Build
+        shell: cmd
         run: |
-          cmake -B build \
-            -G "Ninja" \
-            -DCMAKE_INSTALL_PREFIX=./3dthesis \
-            -DMPIEXEC_PREFLAGS="--oversubscribe" \
-            -DCMAKE_CXX_FLAGS="-Wall ${CMAKE_CXX_FLAGS_EXTRA}"
+          cmake -B build ^
+            -G "Ninja" ^
+            -DCMAKE_INSTALL_PREFIX=3dthesis ^
+            -DMPIEXEC_PREFLAGS="--oversubscribe" ^
+            -DCMAKE_CXX_FLAGS="-Wall %CMAKE_CXX_FLAGS_EXTRA%"
           cmake --build build --parallel 2
           cmake --install build
       - name: Test 3DThesis Snapshots
+        shell: cmd
         run: |
-          cd examples/snapshot
-          echo "Current working directory: $(pwd)"
+          cd %GITHUB_WORKSPACE%\examples\snapshot
+          echo Current working directory: %CD%
+
+          rem Execute the program using Windows-style paths.
+          %GITHUB_WORKSPACE%\3dthesis\bin\3DThesis.exe .\ParamInput.txt
+
+          rem Check if the 'Data' directory exists.
+          if not exist Data (
+            echo Error: The 'Data' directory was not created.
+            exit /b 1
+          )
+
+          rem Count the number of snapshot files using 'dir' and 'find'.
+          set file_count=0
+          for /f %%i in ('dir /b /a-d Data\snapshot*.csv ^| find /c /v ""') do set file_count=%%i
           
-          # Use a direct relative path to the executable
-          ../../3dthesis/bin/3DThesis.exe ./ParamInput.txt
-          
-          # Check if the Data directory was created
-          if [ ! -d "Data" ]; then
-            echo "Error: The 'Data' directory was not created."
-            exit 1
-          fi
-          
-          # Count files
-          file_count=$(ls -1 Data/snapshot*.csv 2>/dev/null | wc -l)
-          
-          if [ "$file_count" -lt 1 ]; then
-            echo "Error: No snapshot CSV files were found in the Data directory."
-            exit 1
-          fi
-          
-          echo "Successfully found $file_count snapshot files."
-          rm -rf Data
+          echo Found %file_count% snapshot files.
+
+          rem Check if the file count is less than 1.
+          if %file_count% LSS 1 (
+            echo Error: No snapshot files were found.
+            exit /b 1
+          )
+
+          rem Clean up the created directory.
+          rmdir /s /q Data
