@@ -141,20 +141,33 @@ jobs:
       - name: Build
         run: |
           cmake -B build \
-            -G Ninja \
-            -DCMAKE_INSTALL_PREFIX=3dthesis \
+            -G "Ninja" \
+            -DCMAKE_INSTALL_PREFIX=./3dthesis \
             -DMPIEXEC_PREFLAGS="--oversubscribe" \
-            -DCMAKE_CXX_FLAGS="-Wall ${cmake_cxx_flags[@]}" \
-            ${cmake_opts[@]}
+            -DCMAKE_CXX_FLAGS="-Wall ${CMAKE_CXX_FLAGS_EXTRA}"
           cmake --build build --parallel 2
           cmake --install build
       - name: Test 3DThesis Snapshots
         run: |
-          cd $GITHUB_WORKSPACE/examples/snapshot
-          echo Current working directory: $(pwd)
-          $GITHUB_WORKSPACE/3dthesis/bin/3DThesis.exe ./ParamInput.txt
-          file_count="$(find Data -name "snapshot*.csv" -printf "." | wc -m)"
-          if [ $(expr $file_count) < 1 ]; then
-              exit 1
+          cd examples/snapshot
+          echo "Current working directory: $(pwd)"
+          
+          # Use a direct relative path to the executable
+          ../../3dthesis/bin/3DThesis.exe ./ParamInput.txt
+          
+          # Check if the Data directory was created
+          if [ ! -d "Data" ]; then
+            echo "Error: The 'Data' directory was not created."
+            exit 1
           fi
-          rm -r Data
+          
+          # Count files
+          file_count=$(ls -1 Data/snapshot*.csv 2>/dev/null | wc -l)
+          
+          if [ "$file_count" -lt 1 ]; then
+            echo "Error: No snapshot CSV files were found in the Data directory."
+            exit 1
+          fi
+          
+          echo "Successfully found $file_count snapshot files."
+          rm -rf Data
