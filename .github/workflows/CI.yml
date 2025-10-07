@@ -130,47 +130,76 @@ jobs:
           fi
 
   Windows:
-    name: Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout 3DThesis
-        uses: actions/checkout@v4
-      - name: Build
-        shell: cmd
-        run: |
-          cmake -B build ^
-            -G "Ninja" ^
-            -DCMAKE_INSTALL_PREFIX=3dthesis ^
-            -DMPIEXEC_PREFLAGS="--oversubscribe" ^
-            -DCMAKE_CXX_FLAGS="-Wall %CMAKE_CXX_FLAGS_EXTRA%"
-          cmake --build build --parallel 2
-          cmake --install build
-      - name: Test 3DThesis Snapshots
-        shell: cmd
-        run: |
-          cd %GITHUB_WORKSPACE%\examples\snapshot
-          echo Current working directory: %CD%
+      # Update the job name based on the compiler being tested
+      name: Windows (${{ matrix.config.name }})
+      runs-on: windows-latest
+      
+      strategy:
+        matrix:
+          config:
+            - name: MinGW
+              compiler: mingw
+              # For MinGW, specify the generator and compiler paths.
+              cmake_generator: "Ninja"
+              cxx_compiler: "C:/mingw64/bin/g++.exe"
+              c_compiler: "C:/mingw64/bin/gcc.exe"
 
-          rem Execute the program using Windows-style paths.
-          %GITHUB_WORKSPACE%\3dthesis\bin\3DThesis.exe .\ParamInput.txt
+            - name: MSVC
+              compiler: msvc
+              # For MSVC, specify the Visual Studio generator.
+              # The compiler is auto-detected by CMake.
+              cmake_generator: "Visual Studio 17 2022"
+              cxx_compiler: "" # Not needed
+              c_compiler: ""   # Not needed
 
-          rem Check if the 'Data' directory exists.
-          if not exist Data (
-            echo Error: The 'Data' directory was not created.
-            exit /b 1
-          )
+      steps:
+        - name: Checkout 3DThesis
+          uses: actions/checkout@v4
 
-          rem Count the number of snapshot files using 'dir' and 'find'.
-          set file_count=0
-          for /f %%i in ('dir /b /a-d Data\snapshot*.csv ^| find /c /v ""') do set file_count=%%i
-          
-          echo Found %file_count% snapshot files.
+        - name: Build
+          shell: cmd
+          # Set compiler paths for CMake in MinGW configuration.
+          env:
+            CXX: ${{ matrix.config.cxx_compiler }}
+            CC: ${{ matrix.config.c_compiler }}
+          # build using CMake with the generator from the matrix.
+          # For MSVC, we must specify a build configuration (e.g., Release).
+          # The '--config' flag is ignored by single-configuration generators like Ninja.
+          run: |
+            cmake -B build ^
+              -G "${{ matrix.config.cmake_generator }}" ^
+              -DCMAKE_INSTALL_PREFIX=3dthesis ^
+              -DMPIEXEC_PREFLAGS="--oversubscribe"
 
-          rem Check if the file count is less than 1.
-          if %file_count% LSS 1 (
-            echo Error: No snapshot files were found.
-            exit /b 1
-          )
+            cmake --build build --config Release --parallel 2
+            cmake --install build --config Release
 
-          rem Clean up the created directory.
-          rmdir /s /q Data
+        - name: Test 3DThesis Snapshots
+          shell: cmd
+          run: |
+            cd %GITHUB_WORKSPACE%\examples\snapshot
+            echo Current working directory: %CD%
+
+            rem The executable path is the same regardless of the compiler.
+            %GITHUB_WORKSPACE%\3dthesis\bin\3DThesis.exe .\ParamInput.txt
+
+            rem Check if the 'Data' directory exists.
+            if not exist Data (
+              echo Error: The 'Data' directory was not created.
+              exit /b 1
+            )
+
+            rem Count the number of snapshot files.
+            set file_count=0
+            for /f %%i in ('dir /b /a-d Data\snapshot*.csv ^| find /c /v ""') do set file_count=%%i
+            
+            echo Found %file_count% snapshot files.
+
+            rem Check if the file count is less than 1.
+            if %file_count% LSS 1 (
+              echo Error: No snapshot files were found.
+              exit /b 1
+            )
+
+            rem Clean up the created directory.
+            rmdir /s /q Data
