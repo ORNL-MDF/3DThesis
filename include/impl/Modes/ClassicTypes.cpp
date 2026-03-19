@@ -410,6 +410,7 @@ namespace Thesis::impl{
 
 		#pragma omp parallel for num_threads(sim.settings.thnum) schedule(static)
 		for (int p = 0; p < sim.domain.pnum; p++) { 
+			grid.set_output_flag(true, p);
 			grid.set_T(sim.material.T_init, p);
 		}
 
@@ -1085,4 +1086,3 @@ namespace Thesis::impl{
 		return;
 	}
 }
-

@@ -140,9 +140,11 @@ namespace Thesis::Run{
                 const auto& rdf_tl = grid.get_RDF_tl(n);
                 const auto& rdf_cr = grid.get_RDF_cr(n);
                 const size_t eSize = rdf_tm.size();
-                const uint32_t p = RDF.template ijk_to_p<host_space>(grid.get_i(n), grid.get_j(n), grid.get_k(n));
+                const uint32_t LOCAL_ijk[3] = {grid.get_i(n), grid.get_j(n), grid.get_k(n)};
+                uint32_t LOCAL_p;
+                header.LOCAL_ijk_to_LOCAL_p(LOCAL_p, LOCAL_ijk);
                 for (size_t e = 0; e < eSize; e++) {
-                    data.p(currentEventIndex) = p;
+                    data.p(currentEventIndex) = LOCAL_p;
                     data.tm(currentEventIndex) = rdf_tm[e];
                     data.tl(currentEventIndex) = rdf_tl[e];
                     data.cr(currentEventIndex) = rdf_cr[e];
