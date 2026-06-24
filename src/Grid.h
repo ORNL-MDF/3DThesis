@@ -349,7 +349,7 @@ public:
 		}
 	}
 
-	double get_H(const int p) { return G[p]; }
+	double get_H(const int p) { return H[p]; }
 	double get_Hx(const int p) { return Hx[p]; }
 	double get_Hy(const int p) { return Hy[p]; }
 	double get_Hz(const int p) { return Hz[p]; }

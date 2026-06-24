@@ -17,7 +17,73 @@
 
 using std::max;
 
+void beam_trace_snap(vector<int>& test_pts, Grid& grid, const Simdat& sim, const double t_start, const double t_end) {
+	// For each path
+	for (const vector<path_seg>& path : sim.paths) {
+
+		// Find segment associated with starting time
+		int seg_start = 0;
+		while (path[seg_start].seg_time < t_start && (seg_start + 1) != path.size()) { seg_start++; }
+
+		// Find segment associated with ending time
+		int seg_end = 0;
+		while (path[seg_end].seg_time < t_end && (seg_end + 1) != path.size()) { seg_end++; }
+
+		// Variables for integer grid numbers
+		int x_grid_num = 0, y_grid_num = 0, z_grid_num = 0;
+
+		// Variables for if the domain the grid number is out of bounds
+		int x_flat = 0, y_flat = 0, z_flat = 0;
+
+		auto add_snapped_points = [&]() {
+			if (x_grid_num < 0) { x_grid_num = 0; x_flat = 0; }
+			else if (x_grid_num >= (sim.domain.xnum - 1)) { x_grid_num = sim.domain.xnum - 1; x_flat = 0; }
+			if (y_grid_num < 0) { y_grid_num = 0; y_flat = 0; }
+			else if (y_grid_num >= (sim.domain.ynum - 1)) { y_grid_num = sim.domain.ynum - 1; y_flat = 0; }
+			if (z_grid_num < 0) { z_grid_num = 0; z_flat = 0; }
+			else if (z_grid_num >= (sim.domain.znum - 1)) { z_grid_num = sim.domain.znum - 1; z_flat = 0; }
+
+			// For each direction, add all points in that square
+			for (int a = 0; a <= z_flat; a++) {
+				for (int b = 0; b <= y_flat; b++) {
+					for (int c = 0; c <= x_flat; c++) {
+						const int p = Util::ijk_to_p(x_grid_num + c, y_grid_num + b, z_grid_num + a, sim);
+						if (!grid.get_T_calc_flag(p)) {
+							test_pts.push_back(p);
+							grid.set_T_calc_flag(true, p);
+						}
+					}
+				}
+			}
+		};
+
+		// For all path segments between starting and ending segments
+		for (int seg = max(seg_start - 1, 0); seg <= seg_end; seg++) {
+
+			// If {xnum,ynum,znum}>1, find the grid numbers for the segments {x,y,z}
+			if (sim.domain.xnum - 1) { x_grid_num = static_cast<int>((path[seg].sx - sim.domain.xmin) / sim.domain.xres); x_flat = 1; }
+			if (sim.domain.ynum - 1) { y_grid_num = static_cast<int>((path[seg].sy - sim.domain.ymin) / sim.domain.yres); y_flat = 1; }
+			if (sim.domain.znum - 1) { z_grid_num = static_cast<int>((path[seg].sz - sim.domain.zmin) / sim.domain.zres); z_flat = 1; }
+
+			add_snapped_points();
+		}
+
+		// If the "current" segment is a line, also add the current point
+		if (path[seg_end].smode == 0 && t_end<path.back().seg_time) {
+			int_seg current_beam = Util::GetBeamLoc(t_end, seg_end, path, sim);
+			if (sim.domain.xnum - 1) { x_grid_num = static_cast<int>((current_beam.xb - sim.domain.xmin) / sim.domain.xres); x_flat = 1; }
+			if (sim.domain.ynum - 1) { y_grid_num = static_cast<int>((current_beam.yb - sim.domain.ymin) / sim.domain.yres); y_flat = 1; }
+			if (sim.domain.znum - 1) { z_grid_num = static_cast<int>((current_beam.zb - sim.domain.zmin) / sim.domain.zres); z_flat = 1; }
+
+			add_snapped_points();
+		}
+	}
+	return;
+}
+
 void beam_trace_perimeter(vector<int>& test_pts, Grid& grid, const Simdat& sim, const double t_end_norm){	
+	if (sim.param.radiusCheck < 0.0) { return; }
+
 	// For each path
 	const int numPaths = sim.paths.size();
 	for (int pathNum=0;pathNum<numPaths;pathNum++){
@@ -96,7 +162,11 @@ void beam_trace_perimeter(vector<int>& test_pts, Grid& grid, const Simdat& sim, 
 }
 
 void Melt::beam_trace(vector<int>& test_pts, Grid& grid, const Simdat& sim, const double t_start, const double t_end) {
-	
+	if (sim.param.radiusCheck < 0.0) {
+		beam_trace_snap(test_pts, grid, sim, t_start, t_end);
+		return;
+	}
+
 	// Beam trace for perimeter
 	beam_trace_perimeter(test_pts, grid, sim, t_end);
 	
