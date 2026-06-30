@@ -147,7 +147,7 @@ jobs:
               compiler: msvc
               # For MSVC, specify the Visual Studio generator.
               # The compiler is auto-detected by CMake.
-              cmake_generator: "Visual Studio 17 2022"
+              cmake_generator: "Visual Studio 18 2026"
               cxx_compiler: "" # Not needed
               c_compiler: ""   # Not needed
 

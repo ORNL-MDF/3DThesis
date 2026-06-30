@@ -332,7 +332,7 @@ void Grid::Solidify(const double t, const Simdat& sim, const int p) {
 	else {
 		const vector<vector<double>>	params = Calc_Solidficiaton_Secondary(t_sol, nodes, p);
 		const vector<double> primaryParams = params[0];
-		const vector<double> secondaryParams = params[0];
+		const vector<double> secondaryParams = params[1];
 		Set_Solidficiaton_Secondary(primaryParams, secondaryParams, sim, p);
 	}
 }
@@ -588,8 +588,8 @@ void Grid::Set_Solidficiaton_Secondary(const vector<double>& primaryParams, cons
 	const double temp_xyz1 = (temp_x1 * Gxu_temp + temp_y1 * Gyu_temp + temp_z1 * Gzu_temp);
 
 	const double temp_x2 = Gxu_temp * temp_xyz1;
-	const double temp_y2 = Gxu_temp * temp_xyz1;
-	const double temp_z2 = Gxu_temp * temp_xyz1;
+	const double temp_y2 = Gyu_temp * temp_xyz1;
+	const double temp_z2 = Gzu_temp * temp_xyz1;
 	
 	const double Hx_temp = temp_x1 - temp_x2;
 	const double Hy_temp = temp_y1 - temp_y2;

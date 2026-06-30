@@ -273,6 +273,8 @@ void Run::Snapshots_GeometryBounds(Grid& grid, const Simdat& sim) {
 			}
 			j++;
 		}
+		if (j == 0) { j = 1; }
+		if (j >= path.size()) { j = path.size() - 1; }
 
 		double x_0 = path[j-1].sx;
 		double y_0 = path[j-1].sy;
@@ -282,13 +284,11 @@ void Run::Snapshots_GeometryBounds(Grid& grid, const Simdat& sim) {
 		double dy = y_1 - y_0;
 		double dt = path[j].seg_time - path[j-1].seg_time;
 
-		double beam_x = x_0 + (dx/dt)*(t - path[j-1].seg_time);
-		double beam_y = y_0 + (dy/dt)*(t - path[j-1].seg_time);
+		double beam_x = x_1;
+		double beam_y = y_1;
 
 		if (path[j].smode == 1){
 			angle = 0.0;
-			beam_x = x_1;
-			beam_y = y_1;
 		}
 		else{
 			angle = atan2(dy, dx);
