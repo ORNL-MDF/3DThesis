@@ -13,9 +13,133 @@
 
 #include <vector>
 #include <omp.h>
+#include <algorithm>
 #include <cmath>
+#include <limits>
+#include <utility>
 
 using std::max;
+
+namespace {
+	struct LiquidPointInfo {
+		int i;
+		int j;
+		int k;
+		int depth_liq;
+		double x;
+		double y;
+		double T;
+	};
+
+	inline void update_rotated_extents(
+		const double x,
+		const double y,
+		const double sin_angle,
+		const double cos_angle,
+		double& minRotX,
+		double& maxRotX,
+		double& minRotY,
+		double& maxRotY) {
+		const double x_rot = x * cos_angle + y * sin_angle;
+		minRotX = std::min(x_rot, minRotX);
+		maxRotX = std::max(x_rot, maxRotX);
+
+		const double y_rot = -x * sin_angle + y * cos_angle;
+		minRotY = std::min(y_rot, minRotY);
+		maxRotY = std::max(y_rot, maxRotY);
+	}
+
+	inline double liquid_isotherm_fraction(
+		const double T_liq_pt,
+		const double T_neighbor,
+		const double T_liq) {
+		const double dT = T_neighbor - T_liq_pt;
+		if (dT == 0.0) { return 0.0; }
+
+		double f = (T_liq - T_liq_pt) / dT;
+		if (f < 0.0) { return 0.0; }
+		if (f > 1.0) { return 1.0; }
+		return f;
+	}
+
+	inline LiquidPointInfo get_liquid_point_info(
+		const int liq_pt,
+		const vector<int>& depths,
+		Grid& grid,
+		const Simdat& sim) {
+		LiquidPointInfo info;
+		info.i = grid.get_i(liq_pt);
+		info.j = grid.get_j(liq_pt);
+		info.k = grid.get_k(liq_pt);
+		info.depth_liq = depths[info.i * sim.domain.ynum + info.j];
+		info.x = grid.get_x(liq_pt);
+		info.y = grid.get_y(liq_pt);
+		info.T = grid.get_T(liq_pt);
+		return info;
+	}
+
+	inline void update_liquid_isotherm_extents(
+		const LiquidPointInfo& info,
+		Grid& grid,
+		const Simdat& sim,
+		const double sin_angle,
+		const double cos_angle,
+		double& minRotX,
+		double& maxRotX,
+		double& minRotY,
+		double& maxRotY) {
+		update_rotated_extents(info.x, info.y, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
+
+		for (int di = -1; di <= 1; di++) {
+			for (int dj = -1; dj <= 1; dj++) {
+				if (di == 0 && dj == 0) { continue; }
+
+				const int ni = info.i + di;
+				const int nj = info.j + dj;
+				if (ni < 0 || ni >= sim.domain.xnum || nj < 0 || nj >= sim.domain.ynum) {
+					continue;
+				}
+
+				const int neighbor = Util::ijk_to_p(ni, nj, info.k, sim);
+				const double T_neighbor = grid.get_T(neighbor);
+				if (T_neighbor >= sim.material.T_liq) { continue; }
+
+				const double f = liquid_isotherm_fraction(info.T, T_neighbor, sim.material.T_liq);
+				double x_iso;
+				double y_iso;
+				if (sim.domain.customPoints) {
+					x_iso = info.x + f * (grid.get_x(neighbor) - info.x);
+					y_iso = info.y + f * (grid.get_y(neighbor) - info.y);
+				}
+				else {
+					x_iso = info.x + f * static_cast<double>(di) * sim.domain.xres;
+					y_iso = info.y + f * static_cast<double>(dj) * sim.domain.yres;
+				}
+				update_rotated_extents(x_iso, y_iso, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
+			}
+		}
+	}
+
+	inline double liquid_isotherm_depth(
+		const LiquidPointInfo& info,
+		Grid& grid,
+		const Simdat& sim) {
+		if (sim.domain.znum <= 1) { return 0.0; }
+
+		double depth = info.depth_liq;
+
+		if (info.depth_liq < sim.domain.znum - 1) {
+			const int depth_sol = info.depth_liq + 1;
+			const int p_liq = Util::ijk_to_p(info.i, info.j, sim.domain.znum - 1 - info.depth_liq, sim);
+			const int p_sol = Util::ijk_to_p(info.i, info.j, sim.domain.znum - 1 - depth_sol, sim);
+			const double T_liq = grid.get_T(p_liq);
+			const double T_sol = grid.get_T(p_sol);
+			depth += liquid_isotherm_fraction(T_liq, T_sol, sim.material.T_liq);
+		}
+
+		return sim.domain.zres * depth;
+	}
+}
 
 void beam_trace_snap(vector<int>& test_pts, Grid& grid, const Simdat& sim, const double t_start, const double t_end) {
 	// For each path
@@ -554,6 +678,7 @@ void Melt::calc_mp_info(const vector<int>& depths, Grid& grid, const Simdat& sim
 		
 		// Iterative loop from current point to find local, liquid points
 		vector<int> local_liq_pts;
+		local_liq_pts.reserve(local_test_pts.size());
 		while (!local_test_pts.empty()){
 			local_neighbor_check(local_test_pts, local_liq_pts, grid, sim);
 		}
@@ -566,48 +691,39 @@ void Melt::calc_mp_info(const vector<int>& depths, Grid& grid, const Simdat& sim
 			trig_it = list<vector<double>>::reverse_iterator(multi_trigs.erase((++trig_it).base()));
 		}
 		else{
-			// Set test points next iteration to current pool
-			local_test_pts = local_liq_pts;
-
 			// Calculate rotated x,y of liquid points
 			double minRotX = std::numeric_limits<double>::max();
 			double maxRotX= std::numeric_limits<double>::lowest();
 			double minRotY = std::numeric_limits<double>::max();
 			double maxRotY = std::numeric_limits<double>::lowest();
+			double depth = 0.0;
+			vector<LiquidPointInfo> local_liq_info;
+			local_liq_info.reserve(local_liq_pts.size());
 			for (const int& liq_pt:local_liq_pts){
-				const double x = grid.get_x(liq_pt);
-				const double y = grid.get_y(liq_pt);
-
-				const double x_rot = x*cos_angle + y*sin_angle;
-				minRotX = std::min(x_rot, minRotX);
-				maxRotX = std::max(x_rot, maxRotX);
-
-				const double y_rot = -x*sin_angle + y*cos_angle;
-				minRotY = std::min(y_rot, minRotY);
-				maxRotY = std::max(y_rot, maxRotY);
+				local_liq_info.push_back(get_liquid_point_info(liq_pt, depths, grid, sim));
+				const LiquidPointInfo& info = local_liq_info.back();
+				update_liquid_isotherm_extents(
+					info, grid, sim, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
+				depth = std::max(depth, liquid_isotherm_depth(info, grid, sim));
 			}
 
 			// Calculate width and depth
 			const double width = maxRotY - minRotY;
 			const double length = maxRotX - minRotX;
-			
-			// Get depth
-			const double depth = sim.domain.xres * (*std::max_element(depths.begin(), depths.end()));
 
 			// Now add to all relevant points
-			for (const int& liq_pt:local_liq_pts){
-				// Get i,j and <ij>
-				const int i = grid.get_i(liq_pt);
-				const int j = grid.get_j(liq_pt);
-				int dnum = i * sim.domain.ynum + j;
+			for (const LiquidPointInfo& info:local_liq_info){
 				// For points in depth
-				for (int d=0;d<=depths[dnum];d++){
-					const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
+				for (int d=0;d<=info.depth_liq;d++){
+					const int p_temp = Util::ijk_to_p(info.i, info.j, sim.domain.znum - 1 - d, sim);
 					grid.set_mpWidth(width, p_temp);
 					grid.set_mpLength(length, p_temp);
 					grid.set_mpDepth(depth, p_temp);
 				}
 			}
+
+			// Set test points next iteration to current pool
+			local_test_pts = std::move(local_liq_pts);
 
 			// Update iterators
 			++seg_it;
