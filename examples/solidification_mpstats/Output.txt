@@ -11,7 +11,7 @@ Temperature
 }
 Solidification
 {
-	tSol	0
+	tSol	1
 	G	0
 	Gx	0
 	Gy	0
@@ -23,6 +23,7 @@ Solidification
 	numMelt	0
 	RDF	0
 	MP_Stats 1
+	MP_Stats_Interp 0
 }
 Solidification+
 {

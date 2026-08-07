@@ -21,6 +21,12 @@
 using std::max;
 
 namespace {
+	struct MpStatsAccessors {
+		void (Grid::*set_width)(const double, const int);
+		void (Grid::*set_length)(const double, const int);
+		void (Grid::*set_depth)(const double, const int);
+	};
+
 	struct LiquidPointInfo {
 		int i;
 		int j;
@@ -138,6 +144,84 @@ namespace {
 		}
 
 		return sim.domain.zres * depth;
+	}
+
+	inline void set_mp_stats_values(
+		Grid& grid,
+		const MpStatsAccessors& accessors,
+		const double width,
+		const double length,
+		const double depth,
+		const int p) {
+		(grid.*(accessors.set_width))(width, p);
+		(grid.*(accessors.set_length))(length, p);
+		(grid.*(accessors.set_depth))(depth, p);
+	}
+
+	inline void write_mp_stats_grid(
+		const vector<int>& local_liq_pts,
+		const vector<int>& depths,
+		Grid& grid,
+		const Simdat& sim,
+		const double sin_angle,
+		const double cos_angle,
+		const MpStatsAccessors& accessors) {
+		double minRotX = std::numeric_limits<double>::max();
+		double maxRotX = std::numeric_limits<double>::lowest();
+		double minRotY = std::numeric_limits<double>::max();
+		double maxRotY = std::numeric_limits<double>::lowest();
+		for (const int& liq_pt : local_liq_pts) {
+			update_rotated_extents(
+				grid.get_x(liq_pt), grid.get_y(liq_pt), sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
+		}
+
+		const double width = maxRotY - minRotY;
+		const double length = maxRotX - minRotX;
+		const double depth = sim.domain.zres * (*std::max_element(depths.begin(), depths.end()));
+
+		for (const int& liq_pt : local_liq_pts) {
+			const int i = grid.get_i(liq_pt);
+			const int j = grid.get_j(liq_pt);
+			const int dnum = i * sim.domain.ynum + j;
+			for (int d = 0; d <= depths[dnum]; d++) {
+				const int p_temp = Util::ijk_to_p(i, j, sim.domain.znum - 1 - d, sim);
+				set_mp_stats_values(grid, accessors, width, length, depth, p_temp);
+			}
+		}
+	}
+
+	inline void write_mp_stats_interp(
+		const vector<int>& local_liq_pts,
+		const vector<int>& depths,
+		Grid& grid,
+		const Simdat& sim,
+		const double sin_angle,
+		const double cos_angle,
+		const MpStatsAccessors& accessors) {
+		double minRotX = std::numeric_limits<double>::max();
+		double maxRotX = std::numeric_limits<double>::lowest();
+		double minRotY = std::numeric_limits<double>::max();
+		double maxRotY = std::numeric_limits<double>::lowest();
+		double depth = 0.0;
+		vector<LiquidPointInfo> local_liq_info;
+		local_liq_info.reserve(local_liq_pts.size());
+		for (const int& liq_pt : local_liq_pts) {
+			local_liq_info.push_back(get_liquid_point_info(liq_pt, depths, grid, sim));
+			const LiquidPointInfo& info = local_liq_info.back();
+			update_liquid_isotherm_extents(
+				info, grid, sim, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
+			depth = std::max(depth, liquid_isotherm_depth(info, grid, sim));
+		}
+
+		const double width = maxRotY - minRotY;
+		const double length = maxRotX - minRotX;
+
+		for (const LiquidPointInfo& info : local_liq_info) {
+			for (int d = 0; d <= info.depth_liq; d++) {
+				const int p_temp = Util::ijk_to_p(info.i, info.j, sim.domain.znum - 1 - d, sim);
+				set_mp_stats_values(grid, accessors, width, length, depth, p_temp);
+			}
+		}
 	}
 }
 
@@ -552,7 +636,7 @@ void Melt::calc_depth_max(vector<int>& depths, vector<double>& depth_max, vector
 
 void Melt::calc_mp_info(const vector<int>& depths, Grid& grid, const Simdat& sim, const double t){
 	// If not outputting, don't do
-	if (sim.output.mp_stats == 0) { return;}
+	if (sim.output.mp_stats == 0 && sim.output.mp_stats_interp == 0) { return;}
 	
 	// This enables each segment to have its own local pools
 	static list<vector<int>> multi_local_liq_pools;
@@ -691,35 +775,25 @@ void Melt::calc_mp_info(const vector<int>& depths, Grid& grid, const Simdat& sim
 			trig_it = list<vector<double>>::reverse_iterator(multi_trigs.erase((++trig_it).base()));
 		}
 		else{
-			// Calculate rotated x,y of liquid points
-			double minRotX = std::numeric_limits<double>::max();
-			double maxRotX= std::numeric_limits<double>::lowest();
-			double minRotY = std::numeric_limits<double>::max();
-			double maxRotY = std::numeric_limits<double>::lowest();
-			double depth = 0.0;
-			vector<LiquidPointInfo> local_liq_info;
-			local_liq_info.reserve(local_liq_pts.size());
-			for (const int& liq_pt:local_liq_pts){
-				local_liq_info.push_back(get_liquid_point_info(liq_pt, depths, grid, sim));
-				const LiquidPointInfo& info = local_liq_info.back();
-				update_liquid_isotherm_extents(
-					info, grid, sim, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
-				depth = std::max(depth, liquid_isotherm_depth(info, grid, sim));
+			if (sim.output.mp_stats) {
+				write_mp_stats_grid(
+					local_liq_pts,
+					depths,
+					grid,
+					sim,
+					sin_angle,
+					cos_angle,
+					{&Grid::set_mpWidth, &Grid::set_mpLength, &Grid::set_mpDepth});
 			}
-
-			// Calculate width and depth
-			const double width = maxRotY - minRotY;
-			const double length = maxRotX - minRotX;
-
-			// Now add to all relevant points
-			for (const LiquidPointInfo& info:local_liq_info){
-				// For points in depth
-				for (int d=0;d<=info.depth_liq;d++){
-					const int p_temp = Util::ijk_to_p(info.i, info.j, sim.domain.znum - 1 - d, sim);
-					grid.set_mpWidth(width, p_temp);
-					grid.set_mpLength(length, p_temp);
-					grid.set_mpDepth(depth, p_temp);
-				}
+			if (sim.output.mp_stats_interp) {
+				write_mp_stats_interp(
+					local_liq_pts,
+					depths,
+					grid,
+					sim,
+					sin_angle,
+					cos_angle,
+					{&Grid::set_mpWidthInterp, &Grid::set_mpLengthInterp, &Grid::set_mpDepthInterp});
 			}
 
 			// Set test points next iteration to current pool

@@ -155,7 +155,7 @@ struct Output {
 	bool x, y, z;
 	bool T, T_hist;
 	bool tSol, G, Gx, Gy, Gz, V, dTdt, eqFrac, depth, numMelt;
-	bool RDF, mp_stats;
+	bool RDF, mp_stats, mp_stats_interp;
 	bool H, Hx, Hy, Hz;
 };
 

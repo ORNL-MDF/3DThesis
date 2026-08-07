@@ -183,7 +183,8 @@ This file contains all variables which can be output. A value of 0 indicated to 
   - `eqFrac`: Equiaxed fraction
   - `RDF`: Export results in “Reduced Data Format” compatible with ExaCA
   - `numMelt`: Number of times a point melted and solidified
-  - `MP_Stats`: Output the maximum width and length of the melt pool at each point. MP_Stats may have unexpected behavior when using with MPI domain decomposition or multiple beams.
+  - `MP_Stats`: Output the maximum melt-pool width, length, and depth at each point using node-center geometry. MP_Stats may have unexpected behavior when using with MPI domain decomposition or multiple beams.
+  - `MP_Stats_Interp`: Output the maximum melt-pool width, length, and depth at each point using linear interpolation to the liquidus isotherm. This writes `MP_width_interp`, `MP_length_interp`, and `MP_depth_interp`. If both `MP_Stats` and `MP_Stats_Interp` are enabled, both result sets are written.
 - Solidification+
   - `H`: Magnitude of the orthogonal differential change in the solidification gradient in the direction of the solidification gradient
   - `Hx`: x-component of normalized H
