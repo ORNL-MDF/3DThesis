@@ -28,13 +28,20 @@ namespace {
 	};
 
 	struct LiquidPointInfo {
+		int p;
 		int i;
 		int j;
 		int k;
+		int v2d;
 		int depth_liq;
 		double x;
 		double y;
 		double T;
+	};
+
+	struct BoundaryPoint {
+		double x;
+		double y;
 	};
 
 	inline void update_rotated_extents(
@@ -74,56 +81,57 @@ namespace {
 		Grid& grid,
 		const Simdat& sim) {
 		LiquidPointInfo info;
+		info.p = liq_pt;
 		info.i = grid.get_i(liq_pt);
 		info.j = grid.get_j(liq_pt);
 		info.k = grid.get_k(liq_pt);
-		info.depth_liq = depths[info.i * sim.domain.ynum + info.j];
+		info.v2d = info.i * sim.domain.ynum + info.j;
+		info.depth_liq = depths[info.v2d];
 		info.x = grid.get_x(liq_pt);
 		info.y = grid.get_y(liq_pt);
 		info.T = grid.get_T(liq_pt);
 		return info;
 	}
 
-	inline void update_liquid_isotherm_extents(
+	inline void append_boundary_face(
 		const LiquidPointInfo& info,
 		Grid& grid,
 		const Simdat& sim,
-		const double sin_angle,
-		const double cos_angle,
-		double& minRotX,
-		double& maxRotX,
-		double& minRotY,
-		double& maxRotY) {
-		update_rotated_extents(info.x, info.y, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
-
-		for (int di = -1; di <= 1; di++) {
-			for (int dj = -1; dj <= 1; dj++) {
-				if (di == 0 && dj == 0) { continue; }
-
-				const int ni = info.i + di;
-				const int nj = info.j + dj;
-				if (ni < 0 || ni >= sim.domain.xnum || nj < 0 || nj >= sim.domain.ynum) {
-					continue;
-				}
-
-				const int neighbor = Util::ijk_to_p(ni, nj, info.k, sim);
-				const double T_neighbor = grid.get_T(neighbor);
-				if (T_neighbor >= sim.material.T_liq) { continue; }
-
-				const double f = liquid_isotherm_fraction(info.T, T_neighbor, sim.material.T_liq);
-				double x_iso;
-				double y_iso;
-				if (sim.domain.customPoints) {
-					x_iso = info.x + f * (grid.get_x(neighbor) - info.x);
-					y_iso = info.y + f * (grid.get_y(neighbor) - info.y);
-				}
-				else {
-					x_iso = info.x + f * static_cast<double>(di) * sim.domain.xres;
-					y_iso = info.y + f * static_cast<double>(dj) * sim.domain.yres;
-				}
-				update_rotated_extents(x_iso, y_iso, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
-			}
+		const vector<int>& active_column_stamp,
+		const int stamp,
+		const int di,
+		const int dj,
+		vector<BoundaryPoint>& boundary_points) {
+		const int ni = info.i + di;
+		const int nj = info.j + dj;
+		if (ni < 0 || ni >= sim.domain.xnum || nj < 0 || nj >= sim.domain.ynum) {
+			boundary_points.push_back({info.x, info.y});
+			return;
 		}
+
+		const int neighbor_v2d = ni * sim.domain.ynum + nj;
+		if (active_column_stamp[neighbor_v2d] == stamp) {
+			return;
+		}
+
+		const int neighbor = Util::ijk_to_p(ni, nj, info.k, sim);
+		const double T_neighbor = grid.get_T(neighbor);
+		if (T_neighbor >= sim.material.T_liq) {
+			return;
+		}
+
+		const double f = liquid_isotherm_fraction(info.T, T_neighbor, sim.material.T_liq);
+		double x_iso;
+		double y_iso;
+		if (sim.domain.customPoints) {
+			x_iso = info.x + f * (grid.get_x(neighbor) - info.x);
+			y_iso = info.y + f * (grid.get_y(neighbor) - info.y);
+		}
+		else {
+			x_iso = info.x + f * static_cast<double>(di) * sim.domain.xres;
+			y_iso = info.y + f * static_cast<double>(dj) * sim.domain.yres;
+		}
+		boundary_points.push_back({x_iso, y_iso});
 	}
 
 	inline double liquid_isotherm_depth(
@@ -198,19 +206,64 @@ namespace {
 		const double sin_angle,
 		const double cos_angle,
 		const MpStatsAccessors& accessors) {
+		static vector<int> active_column_stamp;
+		static int stamp = 0;
+		static vector<LiquidPointInfo> local_liq_info;
+		static vector<BoundaryPoint> boundary_points;
+
+		const int column_count = sim.domain.xnum * sim.domain.ynum;
+		if (active_column_stamp.size() != column_count) {
+			active_column_stamp.assign(column_count, 0);
+			stamp = 0;
+		}
+		if (++stamp == std::numeric_limits<int>::max()) {
+			std::fill(active_column_stamp.begin(), active_column_stamp.end(), 0);
+			stamp = 1;
+		}
+
+		local_liq_info.clear();
+		local_liq_info.reserve(local_liq_pts.size());
+		boundary_points.clear();
+		boundary_points.reserve(4 * local_liq_pts.size());
+
+		double depth = 0.0;
+		for (const int& liq_pt : local_liq_pts) {
+			local_liq_info.push_back(get_liquid_point_info(liq_pt, depths, grid, sim));
+			const LiquidPointInfo& info = local_liq_info.back();
+			active_column_stamp[info.v2d] = stamp;
+			depth = std::max(depth, liquid_isotherm_depth(info, grid, sim));
+		}
+
+		const bool x_first = std::abs(cos_angle) >= std::abs(sin_angle);
+		for (const LiquidPointInfo& info : local_liq_info) {
+			if (x_first) {
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, 1, 0, boundary_points);
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, -1, 0, boundary_points);
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, 0, 1, boundary_points);
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, 0, -1, boundary_points);
+			}
+			else {
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, 0, 1, boundary_points);
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, 0, -1, boundary_points);
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, 1, 0, boundary_points);
+				append_boundary_face(info, grid, sim, active_column_stamp, stamp, -1, 0, boundary_points);
+			}
+		}
+
 		double minRotX = std::numeric_limits<double>::max();
 		double maxRotX = std::numeric_limits<double>::lowest();
 		double minRotY = std::numeric_limits<double>::max();
 		double maxRotY = std::numeric_limits<double>::lowest();
-		double depth = 0.0;
-		vector<LiquidPointInfo> local_liq_info;
-		local_liq_info.reserve(local_liq_pts.size());
-		for (const int& liq_pt : local_liq_pts) {
-			local_liq_info.push_back(get_liquid_point_info(liq_pt, depths, grid, sim));
-			const LiquidPointInfo& info = local_liq_info.back();
-			update_liquid_isotherm_extents(
-				info, grid, sim, sin_angle, cos_angle, minRotX, maxRotX, minRotY, maxRotY);
-			depth = std::max(depth, liquid_isotherm_depth(info, grid, sim));
+		for (const BoundaryPoint& boundary_point : boundary_points) {
+			update_rotated_extents(
+				boundary_point.x,
+				boundary_point.y,
+				sin_angle,
+				cos_angle,
+				minRotX,
+				maxRotX,
+				minRotY,
+				maxRotY);
 		}
 
 		const double width = maxRotY - minRotY;
@@ -218,7 +271,7 @@ namespace {
 
 		for (const LiquidPointInfo& info : local_liq_info) {
 			for (int d = 0; d <= info.depth_liq; d++) {
-				const int p_temp = Util::ijk_to_p(info.i, info.j, sim.domain.znum - 1 - d, sim);
+				const int p_temp = info.p - d;
 				set_mp_stats_values(grid, accessors, width, length, depth, p_temp);
 			}
 		}
