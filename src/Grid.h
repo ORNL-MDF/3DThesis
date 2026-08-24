@@ -256,29 +256,44 @@ public:
 
 		if (sim.param.mode == "Solidification" && sim.param.secondary == true) {
 			if (sim.output.H) { 
-				H = new double[pnum]; 
+				H = new double[pnum](); 
 				outputNames.push_back("H");
 				outputFuncs.push_back(bind(&Grid::get_H, this, _1));
 			}
 			if (sim.output.Hx) { 
-				Hx = new double[pnum];
+				Hx = new double[pnum]();
 				outputNames.push_back("Hx");
 				outputFuncs.push_back(bind(&Grid::get_Hx, this, _1));
 			}
 			if (sim.output.Hy) { 
-				Hy = new double[pnum]; 
+				Hy = new double[pnum](); 
 				outputNames.push_back("Hy");
 				outputFuncs.push_back(bind(&Grid::get_Hy, this, _1));
 			}
 			if (sim.output.Hz) { 
-				Hz = new double[pnum]; 
+				Hz = new double[pnum](); 
 				outputNames.push_back("Hz");
 				outputFuncs.push_back(bind(&Grid::get_Hz, this, _1));
 			}
 		}
 
 	}
-	~Grid() {};
+	~Grid() {
+		delete[] i; delete[] j; delete[] k;
+		delete[] T_calc_flag; delete[] output_flag;
+		delete[] x; delete[] y; delete[] z;
+		delete[] T; delete[] T_last;
+		delete[] tSol; delete[] G; delete[] V; delete[] Gx; delete[] Gy; delete[] Gz;
+		delete[] dTdt; delete[] eqFrac; delete[] numMelt;
+		delete[] H; delete[] Hx; delete[] Hy; delete[] Hz;
+		delete[] depth;
+		delete[] T_hist; delete[] t_hist;
+		delete[] RDF_tm; delete[] RDF_tl; delete[] RDF_cr;
+		delete[] MP_Width; delete[] MP_Length; delete[] MP_Depth;
+	};
+	// Raw-owning pointers: forbid copies so the destructor cannot double-free
+	Grid(const Grid&) = delete;
+	Grid& operator=(const Grid&) = delete;
 	void InitializeGridPoints(const Simdat&);
 	void Output(const Simdat&, const string);
 	vector<vector<double>> Output_Table(const Simdat& sim);

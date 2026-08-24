@@ -253,6 +253,9 @@ void Grid::Output_RRDF_bin(const Simdat& sim, const string name){
 	const uint32_t extent[3] = {static_cast<uint32_t>(sim.domain.xnum), static_cast<uint32_t>(sim.domain.ynum), static_cast<uint32_t>(sim.domain.znum)};
 	const double doubles[5] = {static_cast<double>(sim.domain.xmin), static_cast<double>(sim.domain.ymin), static_cast<double>(sim.domain.zmin), static_cast<double>(sim.domain.xres), static_cast<double>(sim.material.T_liq)};	
 	
+	// Nothing to write (and &vec[0] would be undefined on an empty vector)
+	if (ts.empty()) { return; }
+
 	// Open up binary file
 	std::ofstream os(binFile, std::ios::binary);
 	

@@ -371,8 +371,10 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 					// ELSE
 					//  If the distance of the next segment is less than the diffusion distance, set end time to next segment, average them, and keep going
 					if ((dist2 > r2) || (path[seg_temp_2].sqmod != path[seg_temp_2 - 1].sqmod && (curOrder > 2 || (t2 - ts) > (curStep_max / 64.0)))) {
-						//If point, do averaging calculations and set new end time to the next segment
-						if (path[seg_temp_2].smode) {
+						//If point (or a zero-length line segment, which would divide by zero below), do averaging calculations and set new end time to the next segment
+						dx = path[seg_temp_2].sx - path[seg_temp_2 - 1].sx;
+						dy = path[seg_temp_2].sy - path[seg_temp_2 - 1].sy;
+						if (path[seg_temp_2].smode || (dx * dx + dy * dy) == 0.0) {
 							sum_qmodtx += path[seg_temp_2].sx * path[seg_temp_2].sqmod * (t1 - ts);
 							sum_qmodty += path[seg_temp_2].sy * path[seg_temp_2].sqmod * (t1 - ts);
 							sum_qmodt += path[seg_temp_2].sqmod * (t1 - ts);
@@ -381,8 +383,6 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 						}
 						//If line, find the time when the dist=r. If this time is less than the next segment start time, set end time to next segment; else, set start time to when dist=r
 						else {
-							dx = path[seg_temp_2].sx - path[seg_temp_2 - 1].sx;
-							dy = path[seg_temp_2].sy - path[seg_temp_2 - 1].sy;
 							dt = path[seg_temp_2].seg_time - ts;
 
 							double t_int = ts + dt * (sqrt(((xp - xs) * (xp - xs) + (yp - ys) * (yp - ys)) / (dx * dx + dy * dy)) - sqrt(r2 / (dx * dx + dy * dy)));
@@ -422,10 +422,13 @@ void Calc::GaussCompressIntegrate(Nodes& nodes, const Simdat& sim, const double 
 							dy = path[seg_temp_2].sy - path[seg_temp_2 - 1].sy;
 							dt = (path[seg_temp_2].seg_time - t1);
 
-							sum_qmodtx += (xs + dx * ((path[seg_temp_2].seg_time + t1) / 2.0 - ts) / dt) * path[seg_temp_2].sqmod * dt;
-							sum_qmodty += (ys + dy * ((path[seg_temp_2].seg_time + t1) / 2.0 - ts) / dt) * path[seg_temp_2].sqmod * dt;
-							sum_qmodt += path[seg_temp_2].sqmod * dt;
-							sum_t += dt;
+							// A zero-duration segment contributes nothing (every term is scaled by dt); skip it rather than computing x/dt*dt = NaN
+							if (dt != 0.0) {
+								sum_qmodtx += (xs + dx * ((path[seg_temp_2].seg_time + t1) / 2.0 - ts) / dt) * path[seg_temp_2].sqmod * dt;
+								sum_qmodty += (ys + dy * ((path[seg_temp_2].seg_time + t1) / 2.0 - ts) / dt) * path[seg_temp_2].sqmod * dt;
+								sum_qmodt += path[seg_temp_2].sqmod * dt;
+								sum_t += dt;
+							}
 						}
 					}
 					if (t1 == path[seg_temp_2 - 1].seg_time) {

@@ -14,6 +14,9 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <iostream>
+#include <cstdint>
+#include <cstdlib>
 #include <omp.h>
 #include "DataStructs.h"
 
@@ -26,6 +29,29 @@ namespace Util {
 	// Turns an integer into a zero-padded string
 	string ZeroPadNumber(const int);
 	string ZeroPadNumber(const int, const int);
+	// Computes xnum*ynum*znum in 64-bit and fails fast if it cannot be safely
+	// represented as an int (or exceeds a sane memory bound). Also rejects any
+	// dimension that would be truncated by the uint16_t members of Grid.
+	inline int CheckedPointCount(const int xnum, const int ynum, const int znum) {
+		const long long MAX_DOMAIN_POINTS = 2000000000LL;
+		if (xnum <= 0 || ynum <= 0 || znum <= 0) {
+			std::cout << "Fatal Error: Domain dimensions must be positive (got "
+			          << xnum << " x " << ynum << " x " << znum << ")" << std::endl;
+			exit(1);
+		}
+		if (xnum > UINT16_MAX || ynum > UINT16_MAX || znum > UINT16_MAX) {
+			std::cout << "Fatal Error: Domain dimension exceeds " << UINT16_MAX << " (got "
+			          << xnum << " x " << ynum << " x " << znum << ")" << std::endl;
+			exit(1);
+		}
+		const long long pnum_ll = static_cast<long long>(xnum) * ynum * znum;
+		if (pnum_ll > MAX_DOMAIN_POINTS) {
+			std::cout << "Fatal Error: Domain point count (" << pnum_ll
+			          << ") exceeds supported range (" << MAX_DOMAIN_POINTS << ")" << std::endl;
+			exit(1);
+		}
+		return static_cast<int>(pnum_ll);
+	}
 	// Turns ijk indices into global point number
 	inline int ijk_to_p(const int i, const int j, const int k, const Simdat& sim) {
 		return i * (sim.domain.znum * sim.domain.ynum) + j * sim.domain.znum + k;
