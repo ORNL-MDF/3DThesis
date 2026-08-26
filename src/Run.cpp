@@ -114,7 +114,7 @@ void Run::Snapshots_NoTracking(Grid& grid, const Simdat& sim) {
 		std::cout << "\n";
 
 		// Output 
-		grid.Output(sim, "Snapshot." + Util::ZeroPadNumber(itert, 2));
+		grid.Output(sim, "Snapshot." + Util::ZeroPadNumber(itert, 2) + sim.rankName);
 		
 		// Clear quadrature nodes
 		Util::ClearNodes(nodes);
@@ -184,7 +184,7 @@ void Run::Snapshots_Volume(Grid& grid, const Simdat& sim) {
 		}
 		
 		// Output results
-		grid.Output(sim, "Snapshot." + Util::ZeroPadNumber(i, 2));
+		grid.Output(sim, "Snapshot." + Util::ZeroPadNumber(i, 2) + sim.rankName);
 
 		// Clear integration segments
 		Util::ClearNodes(nodes);
@@ -445,14 +445,14 @@ void Run::Solidify_NoTracking(Grid& grid, const Simdat& sim) {
 
 		//Output data
 		if (itert && (itert % sim.param.out_freq == 0)) {
-			grid.Output(sim, Util::ZeroPadNumber(itert));
+			grid.Output(sim, Util::ZeroPadNumber(itert) + sim.rankName);
 		}
 
 		//Check if simulation is finished
 		if (Util::sim_finish(t, sim, liq_num)) {
 			if (sim.param.out_freq != INT_MAX) {
 				itert = ((itert / sim.param.out_freq) + 1) * sim.param.out_freq;
-				grid.Output(sim, Util::ZeroPadNumber(itert));
+				grid.Output(sim, Util::ZeroPadNumber(itert) + sim.rankName);
 			}
 			break;
 		}
@@ -552,14 +552,14 @@ void Run::Solidify_Volume(Grid& grid, const Simdat& sim) {
 
 		//Output data
 		if (itert && (itert % sim.param.out_freq == 0)) {
-			grid.Output(sim, Util::ZeroPadNumber(itert));
+			grid.Output(sim, Util::ZeroPadNumber(itert) + sim.rankName);
 		}
 
 		//Check if simulation is finished
 		if (Util::sim_finish(t, sim, liq_pts.size())) {
 			if (sim.param.out_freq != INT_MAX) {
 				itert = ((itert / sim.param.out_freq) + 1) * sim.param.out_freq;
-				grid.Output(sim, Util::ZeroPadNumber(itert));
+				grid.Output(sim, Util::ZeroPadNumber(itert) + sim.rankName);
 			}
 			break;
 		}
@@ -688,14 +688,14 @@ void Run::Solidify_Surface(Grid& grid, const Simdat& sim) {
 
 		//Output data
 		if (itert && (itert % sim.param.out_freq == 0)) {
-			grid.Output(sim, "Solidification."+Util::ZeroPadNumber(itert));
+			grid.Output(sim, "Solidification."+Util::ZeroPadNumber(itert) + sim.rankName);
 		}
 
 		//Check if simulation is finished
 		if (Util::sim_finish(t, sim, liq_pts.size())) {
 			if (sim.param.out_freq != INT_MAX) {
 				itert = ((itert / sim.param.out_freq) + 1) * sim.param.out_freq;
-				grid.Output(sim, "Solidification."+Util::ZeroPadNumber(itert));
+				grid.Output(sim, "Solidification."+Util::ZeroPadNumber(itert) + sim.rankName);
 			}
 			break;
 		}

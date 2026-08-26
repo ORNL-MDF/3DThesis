@@ -200,7 +200,11 @@ void	Init::SetValues(int& simValue, string input, int simDefault, string name, i
 		setPrint(simDefault, name, err, print);
 	}
 	else { 
-		simValue = std::stoi(input);
+		try { simValue = std::stoi(input); }
+		catch (const std::exception&) {
+			std::cout << "Fatal Error: cannot parse \"" << input << "\" as integer for " << name << std::endl;
+			exit(1);
+		}
 	}
 	return;
 }
@@ -209,7 +213,13 @@ void	Init::SetValues(bool& simValue, string input, bool simDefault, string name,
 		simValue = simDefault;
 		setPrint(simDefault, name, err, print);
 	}
-	else { simValue = bool(std::stoi(input)); }
+	else {
+		try { simValue = bool(std::stoi(input)); }
+		catch (const std::exception&) {
+			std::cout << "Fatal Error: cannot parse \"" << input << "\" as boolean (0/1) for " << name << std::endl;
+			exit(1);
+		}
+	}
 	return;
 }
 void	Init::SetValues(double& simValue, string input, double simDefault, string name, int err, const bool print) {
@@ -217,7 +227,13 @@ void	Init::SetValues(double& simValue, string input, double simDefault, string n
 		simValue = simDefault;
 		Init::setPrint(simDefault, name, err, print);
 	}
-	else { simValue = std::stod(input); }
+	else {
+		try { simValue = std::stod(input); }
+		catch (const std::exception&) {
+			std::cout << "Fatal Error: cannot parse \"" << input << "\" as number for " << name << std::endl;
+			exit(1);
+		}
+	}
 	return;
 }
 
@@ -283,7 +299,7 @@ void	Init::MakeDataDirectory(const string& file) {
 	#if defined(_WIN32)
 		_mkdir(file.c_str());
 	#else 
-		mkdir(file.c_str(), 0777); // notice that 777 is different than 0777
+		mkdir(file.c_str(), 0755); // owner rwx, group/other rx (further reduced by umask)
 	#endif
 }
 
@@ -292,6 +308,12 @@ void	Init::ReadSimParams(Simdat& sim) {
 	Init::FileRead_Beams(sim.beams, sim.files.beam, sim.print);				// Read beam files
 	Init::FileRead_Material(sim.material, sim.files.material, sim.print); Util::Calc_NonD_dt(sim.beams, sim.material);		// Read material properties // Calculate nonDimensional integration time for all beams
 	Init::FileRead_Paths(sim.paths, sim.files.path, sim.print); Util::Calc_AllScansEndTime(sim);	// Read path files	// Calculate Important Simulation Parameters
+	// Every path is paired with the beam of the same index; fail fast if that pairing is impossible
+	if (sim.beams.empty() || sim.paths.empty() || sim.beams.size() < sim.paths.size()) {
+		std::cout << "Fatal Error: number of beam files (" << sim.beams.size()
+		          << ") is less than number of path files (" << sim.paths.size() << ")" << std::endl;
+		exit(1);
+	}
 	
 	Init::FileRead_Mode(sim, sim.files.mode);	// Initialize simulation mode
 
@@ -606,10 +628,22 @@ void	Init::FileRead_Path(vector<path_seg>& path, const string& file, const bool 
 		pathfile.close();
 	}
 
+	// A path must contain at least one segment beyond the implicit starting position
+	if (path.size() < 2) {
+		std::cout << "Fatal Error: no segments found in path file " << file << std::endl;
+		exit(1);
+	}
+
 	//Calculate path times
 	double dt_seg, dist, dx, dy, dz;
 	path[0].seg_time = 0;
 	for (int seg = 1; seg < path.size(); seg++) {
+		// Line-mode segments divide by speed; reject non-positive values before they produce inf/NaN times
+		if (!path[seg].smode && !(path[seg].sparam > 0.0)) {
+			std::cout << "Fatal Error: non-positive speed in path file " << file
+			          << " (segment " << seg << ")" << std::endl;
+			exit(1);
+		}
 		if (path[seg].smode) {	//For spot mode
 			path[seg].seg_time = path[seg - 1].seg_time + path[seg].sparam;
 		}
@@ -873,6 +907,14 @@ void	Init::SetDomainParams(Domain& domain) {
 	if (domain.customPoints) { return; }
 
 	// Otherwise, set (x,y,z) parameters (num, res, etc.)
+	// When Num is derived from Res, a non-positive Res divides by zero and the resulting inf/NaN is cast to int (undefined behavior)
+	if ((domain.xnum == INT_MAX && !(domain.xres > 0.0)) ||
+	    (domain.ynum == INT_MAX && !(domain.yres > 0.0)) ||
+	    (domain.znum == INT_MAX && !(domain.zres > 0.0))) {
+		std::cout << "Fatal Error: Domain Res must be positive when Num is not specified (got "
+		          << domain.xres << ", " << domain.yres << ", " << domain.zres << ")" << std::endl;
+		exit(1);
+	}
 	if (domain.xnum == INT_MAX) {
 		domain.xnum = 1 + int(0.5 + (domain.xmax - domain.xmin) / domain.xres);
 		domain.xmax = domain.xmin + (domain.xnum - 1) * domain.xres;
@@ -908,5 +950,5 @@ void	Init::SetDomainParams(Domain& domain) {
 
 	
 
-	domain.pnum = domain.xnum * domain.ynum * domain.znum;
+	domain.pnum = Util::PointCount(domain.xnum, domain.ynum, domain.znum);
 }

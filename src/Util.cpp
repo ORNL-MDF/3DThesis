@@ -224,9 +224,11 @@ int_seg	Util::GetBeamLoc(const double time, const int seg, const vector<path_seg
 		const double dz = path[seg].sz - path[seg - 1].sz;
 		const double tcur = time - path[seg - 1].seg_time;
 		const double dt_cur = path[seg].seg_time - path[seg - 1].seg_time;
-		current_seg.xb = path[seg - 1].sx + (tcur / dt_cur)*dx;
-		current_seg.yb = path[seg - 1].sy + (tcur / dt_cur)*dy;
-		current_seg.zb = path[seg - 1].sz + (tcur / dt_cur)*dz;
+		// Zero-duration (zero-length) segment: avoid 0/0; beam sits at the segment endpoint
+		const double frac = (dt_cur > 0.0) ? (tcur / dt_cur) : 1.0;
+		current_seg.xb = path[seg - 1].sx + frac*dx;
+		current_seg.yb = path[seg - 1].sy + frac*dy;
+		current_seg.zb = path[seg - 1].sz + frac*dz;
 	}
 
 	// If we are sufficiently outside the domain, set power to zero (so it won't be added to integration)

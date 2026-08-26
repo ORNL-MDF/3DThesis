@@ -39,7 +39,7 @@ void Out::Progress(const Simdat& sim, const int itert) {
 
 void Out::Point_Progress(const Simdat& sim, const int p) {
 	static int prog_print_last = 0;
-	int prog_now = 10 * p / sim.domain.pnum;
+	int prog_now = static_cast<int>(10LL * p / sim.domain.pnum);
 	if (sim.print && prog_now != prog_print_last) {
 		prog_print_last = prog_now;
 		std::cout << "% of Points: " << 10 * prog_print_last << "%" << "\n";
