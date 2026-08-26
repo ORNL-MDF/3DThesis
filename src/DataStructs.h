@@ -181,4 +181,5 @@ struct Simdat{
 	bool print = true;
 	// Is this running with MPI (actually using multiple ranks)?
 	bool mpi = false;
+	string rankName = "";
 };

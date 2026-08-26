@@ -60,6 +60,7 @@ public:
         // Update local rank printing
         sim.print = rank == 0;
         sim.mpi = size() > 1;
+        sim.rankName = sim.mpi ? "." + name : "";
     }
 
     // Make x-y bounds for local domain

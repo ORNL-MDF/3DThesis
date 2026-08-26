@@ -97,26 +97,21 @@ inline void run(int argc, char * argv[])
 	// Start output clock
 	auto start_out = high_resolution_clock::now();
 
-std::string rank_name = "";
-#ifdef Thesis_ENABLE_MPI
-if (sim.mpi)
-	rank_name = "." + mpi.name;
-#endif
 
 	if (sim.param.mode=="Solidification"){ 
 		if (sim.param.tracking!="Stork"){
-			grid.Output(sim, "Solidification.Final" + rank_name); 
+			grid.Output(sim, "Solidification.Final" + sim.rankName); 
 		}
 		else{
-			grid.Output_RRDF_csv(sim, "RRDF" + rank_name);
-			//grid.Output_RRDF_bin(sim, "RRDF" + rank_name);
+			grid.Output_RRDF_csv(sim, "RRDF" + sim.rankName);
+			//grid.Output_RRDF_bin(sim, "RRDF" + sim.rankName);
 		}
 	}
 	if (sim.output.T_hist) { 
-		grid.Output_T_hist(sim, "T.hist" + rank_name); 
+		grid.Output_T_hist(sim, "T.hist" + sim.rankName); 
 	}
 	if (sim.output.RDF) { 
-		grid.Output_RDF(sim, "RDF.Final" + rank_name); 
+		grid.Output_RDF(sim, "RDF.Final" + sim.rankName); 
 	}
 
 	// Output output time
