@@ -123,7 +123,10 @@ public:
 		ymin = sim.domain.ymin; ymax = sim.domain.ymax; ynum = sim.domain.ynum;
 		zmin = sim.domain.zmin; zmax = sim.domain.zmax; znum = sim.domain.znum;
 
-		const int pnum = sim.domain.pnum;
+		// Custom point files bypass SetDomainParams and leave xnum/ynum/znum at their INT_MAX sentinels; only the point count applies
+		if (sim.domain.customPoints) { Util::CheckLocalGrid(1, 1, 1, sim.domain.pnum); }
+		else { Util::CheckLocalGrid(sim.domain.xnum, sim.domain.ynum, sim.domain.znum, sim.domain.pnum); }
+		const int pnum = static_cast<int>(sim.domain.pnum);
 
 		i = new uint16_t[pnum]();
 		j = new uint16_t[pnum]();

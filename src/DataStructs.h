@@ -97,7 +97,8 @@ struct SimParams {
 // Domain paramters
 struct Domain {
 	// Domain numbers
-	int xnum, ynum, znum, pnum;
+	int xnum, ynum, znum;
+	long long pnum; // 64-bit: the global (pre-MPI-decomposition) count may exceed int range; local grids are validated in Grid
 
 	// Domain bounds 
 	double xmin = DBL_MAX;

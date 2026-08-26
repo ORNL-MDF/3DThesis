@@ -950,5 +950,5 @@ void	Init::SetDomainParams(Domain& domain) {
 
 	
 
-	domain.pnum = Util::CheckedPointCount(domain.xnum, domain.ynum, domain.znum);
+	domain.pnum = Util::PointCount(domain.xnum, domain.ynum, domain.znum);
 }

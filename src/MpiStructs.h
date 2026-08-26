@@ -72,22 +72,24 @@ public:
         const int i = coords[0];
         const int j = coords[1];
 
-        // Find local domain bounds (no overlap for else)
+        // Global extents are uncapped (64-bit point count), so do this arithmetic in 64-bit
+        const long long NX = static_cast<long long>(sim.domain.xnum) - 1;
+        const long long NY = static_cast<long long>(sim.domain.ynum) - 1;
         if (sim.param.mode=="Stork" || sim.settings.mpi_overlap){ 
             // Find local domain bounds (overlap for stork)
-            i_min = ((sim.domain.xnum-1)*i)/I;
-            i_max = ((sim.domain.xnum-1)*(i+1))/I;
+            i_min = static_cast<int>((NX*i)/I);
+            i_max = static_cast<int>((NX*(i+1))/I);
 
-            j_min = ((sim.domain.ynum-1)*j)/J;
-            j_max = ((sim.domain.ynum-1)*(j+1))/J;
+            j_min = static_cast<int>((NY*j)/J);
+            j_max = static_cast<int>((NY*(j+1))/J);
         }
         else{
             // Find local domain bounds (no overlap for else)
-            i_min = ((sim.domain.xnum-1)*i)/I + (i!=0);
-            i_max = ((sim.domain.xnum-1)*(i+1))/I;
+            i_min = static_cast<int>((NX*i)/I) + (i!=0);
+            i_max = static_cast<int>((NX*(i+1))/I);
 
-            j_min = ((sim.domain.ynum-1)*j)/J + (j!=0);
-            j_max = ((sim.domain.ynum-1)*(j+1))/J;
+            j_min = static_cast<int>((NY*j)/J) + (j!=0);
+            j_max = static_cast<int>((NY*(j+1))/J);
         }
 
         // Find local domain bounds (no)
@@ -106,7 +108,7 @@ public:
         sim.domain.ynum = 1 + int(0.5 + (sim.domain.ymax - sim.domain.ymin) / sim.domain.yres);
 		sim.domain.ymax = sim.domain.ymin + (sim.domain.ynum - 1) * sim.domain.yres;
 
-        sim.domain.pnum = Util::CheckedPointCount(sim.domain.xnum, sim.domain.ynum, sim.domain.znum);
+        sim.domain.pnum = Util::PointCount(sim.domain.xnum, sim.domain.ynum, sim.domain.znum);
     }
 };
 
