@@ -769,6 +769,7 @@ void	Init::FileRead_Output(Output& output, const string& file, const bool print)
 	subWords[2].push_back("numMelt");
 	subWords[2].push_back("RDF");
 	subWords[2].push_back("MP_Stats");
+	subWords[2].push_back("MP_Stats_Interp");
 
 	subWords[3].push_back("H");
 	subWords[3].push_back("Hx");
@@ -798,6 +799,7 @@ void	Init::FileRead_Output(Output& output, const string& file, const bool print)
 	Init::SetValues(output.numMelt, values[2][9], false, "output-numMelt", 1, print);
 	Init::SetValues(output.RDF, values[2][10], false, "output-RDF", 1, print);
 	Init::SetValues(output.mp_stats, values[2][11], false, "output-mpStats", 1, print);
+	Init::SetValues(output.mp_stats_interp, values[2][12], false, "output-mpStatsInterp", 1, print);
 
 	Init::SetValues(output.H, values[3][0], false, "output-H", 1, print);
 	Init::SetValues(output.Hx, values[3][1], false, "output-Hx", 1, print);

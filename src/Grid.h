@@ -107,6 +107,9 @@ private:
 	double* MP_Width = NULL; // maximum meltpool width - store if output
 	double* MP_Length = NULL; // maximum meltpool length - store if output
 	double* MP_Depth = NULL; // maximum meltpool depth - store if output
+	double* MP_Width_Interp = NULL; // maximum meltpool width from liquidus interpolation - store if output
+	double* MP_Length_Interp = NULL; // maximum meltpool length from liquidus interpolation - store if output
+	double* MP_Depth_Interp = NULL; // maximum meltpool depth from liquidus interpolation - store if output
 
 	vector<uint32_t> RRDF_idxs; // indices for doubly reduced data format - initilaize size if used
 	vector<double> RRDF_ts;  // times for doubly reduced data format - initilaize size if used
@@ -255,6 +258,19 @@ public:
 				outputFuncs.push_back(bind(&Grid::get_mpLength, this, _1));
 				outputFuncs.push_back(bind(&Grid::get_mpDepth, this, _1));	
 			}
+			if (sim.output.mp_stats_interp){
+				MP_Width_Interp = new double[pnum]();
+				MP_Length_Interp = new double[pnum]();
+				MP_Depth_Interp = new double[pnum]();
+
+				outputNames.push_back("MP_width_interp");
+				outputNames.push_back("MP_length_interp");
+				outputNames.push_back("MP_depth_interp");
+
+				outputFuncs.push_back(bind(&Grid::get_mpWidthInterp, this, _1));
+				outputFuncs.push_back(bind(&Grid::get_mpLengthInterp, this, _1));
+				outputFuncs.push_back(bind(&Grid::get_mpDepthInterp, this, _1));
+			}
 		}
 
 		if (sim.param.mode == "Solidification" && sim.param.secondary == true) {
@@ -382,6 +398,9 @@ public:
 	double get_mpLength(const int p) { return MP_Length[p]; }
 	double get_mpWidth(const int p) { return MP_Width[p]; }
 	double get_mpDepth(const int p) { return MP_Depth[p]; }
+	double get_mpLengthInterp(const int p) { return MP_Length_Interp[p]; }
+	double get_mpWidthInterp(const int p) { return MP_Width_Interp[p]; }
+	double get_mpDepthInterp(const int p) { return MP_Depth_Interp[p]; }
 
 	vector<uint32_t>& get_RRDF_idxs() { return RRDF_idxs; }
 	vector<double>& get_RRDF_ts() { return RRDF_ts; }
@@ -430,4 +449,7 @@ public:
 	void set_mpLength(const double length, const int p) { MP_Length[p] = std::max(length, MP_Length[p]); }
 	void set_mpWidth(const double width, const int p) { MP_Width[p] = std::max(width, MP_Width[p]); }
 	void set_mpDepth(const double depth, const int p) { MP_Depth[p] = std::max(depth, MP_Depth[p]); }
+	void set_mpLengthInterp(const double length, const int p) { MP_Length_Interp[p] = std::max(length, MP_Length_Interp[p]); }
+	void set_mpWidthInterp(const double width, const int p) { MP_Width_Interp[p] = std::max(width, MP_Width_Interp[p]); }
+	void set_mpDepthInterp(const double depth, const int p) { MP_Depth_Interp[p] = std::max(depth, MP_Depth_Interp[p]); }
 };
